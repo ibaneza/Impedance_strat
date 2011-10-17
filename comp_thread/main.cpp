@@ -2,6 +2,7 @@
 
 #include "SpiropsCom.h"
 #include "CompData.h"
+#include "Simplex_Pt.h"
 
 Comp   gPerso;
 
@@ -12,6 +13,7 @@ int main(int argc, char** argv) {
     /--------*/
     char hostname[128];
     int port;
+	double Qt,Qe;
     bool verbose=false;
     for (int i=0; i<argc; i++){
         if (!strncmp(argv[i], "-socket", 7)){
@@ -21,7 +23,14 @@ int main(int argc, char** argv) {
         else if (!strncmp(argv[i], "-verbose", 8)) {
             verbose=true;
         }
+		else if (!strncmp(argv[i], "-qt", 8)) {
+            Qt = atof( argv[i+1] );
+        }
+		else if (!strncmp(argv[i], "-qe", 8)) {
+            Qe = atof( argv[i+1] );
+        }
     }
+
 
     /*-------- Init program value ----------*/
     std::string msg;

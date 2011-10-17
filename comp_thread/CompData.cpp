@@ -4,13 +4,10 @@
 #include <iostream>
 #include <sstream>
 
-void Comp::InitSensor() {
-	//Init some stuff
+Comp::Comp(){
+    //
 }
 
-Comp::Comp(){
-    InitSensor();
-}
 
 void Comp::Update(float elapsedTime, float LastThinkDt, int bJustThink) {
     if (bJustThink) {

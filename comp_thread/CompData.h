@@ -7,9 +7,9 @@
 struct Comp{
 	
 	//Some stuff
+	
 	//...
 
-    void InitSensor();
     Comp();
     void Update(float elapsedTime, float LastThinkDt, int bJustThink);
     std::string get_message();
