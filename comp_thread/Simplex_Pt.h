@@ -1,6 +1,12 @@
 #ifndef _SIMPLEX_PT_HEADER_
 #define _SIMPLEX_PT_HEADER_
 
+/*-------- This is bold --------*/
+#define _SCL_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#define _AFX_SECURE_NO_WARNINGS
+#define _ATL_SECURE_NO_WARNINGS
+
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -17,7 +23,7 @@ public:
 
 private:
 	/* -------- Point-related stuff ---------- */
-	ublas::vector<double> data_;	// Contains point position in parameters space
+	ublas::vector< double > data_;	// Contains point position in parameters space
 	double distance_;				// Objective function evaluation of current point position
 	int rank_;						// Rank amongst simplex points
 	int dimension_;					// Number of parameters
@@ -54,16 +60,18 @@ public:
 	void set_coeff( double Qt, double Qe )
 				{ this->QtonR=Qt; this->QeonR=Qe;};
 	int set_data( const ublas::vector<double> &data );
-	int set_disturbance( const ublas::matrix<double> &fdis );
 	int set_current_kinematics( const ublas::vector<double> &x, const ublas::vector<double> &dx, const ublas::vector<double> &ddx ); 
 	int set_desired_kinematics( const ublas::vector<double> &xdes, const ublas::matrix<double> &Pref ); 
 	int set_constants( double M, double zc, double gravity, double dt, double h );
 	int set_kpinit( double Kpinit );
 	int set_matrices( ublas::matrix< double > J, ublas::matrix< double > dJ, ublas::matrix< double > Ji, ublas::matrix< double > dJJi, ublas::matrix< double > JtiHJi );
+	int set_disturbance( const ublas::matrix< double > &fdis );
 	/* -------- Init -------- */
 	int init_size();
 	void reset_all();
 	double func();
+	/* -------- Getters -------- */
+	ublas::vector< double > get_data(){ return this->data_; };
 };
 
 

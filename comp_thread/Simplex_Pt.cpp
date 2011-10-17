@@ -6,10 +6,13 @@ Simplex_Pt::Simplex_Pt( int mode ){
 	this->mode_ = mode;
 }
 
+Simplex_Pt::~Simplex_Pt(){}
+
 int Simplex_Pt::init_size(){
 	/* --------
 	Initializes vectors and matrices at the right dimension,
-	assuming data preview has already been given along with horizon and time increment
+	assuming data preview has already been given 
+	along with horizon and time increment
 	--------- */
 	if( this->dimension_ <= 0 )
 		return 0;
@@ -34,6 +37,7 @@ int Simplex_Pt::init_size(){
 	Xc_.resize(3,dimension); Yc_.resize(3,dimension);
 	X_.resize(3,dimension); Y_.resize(3,dimension); Z_.resize(3,dimension);
 	P_.resize(2,dimension); Pref_.resize(2,dimension);
+	FDIS_.resize(3,dimension);
 
 	x_.resize( 3 ); dx_.resize( 3 ); ddx_.resize( 3 );
 	xdes_.resize( 3 );
@@ -49,20 +53,6 @@ int Simplex_Pt::set_data( const vector<double> &data ){
 		return 0;
 	for( int i=0 ; i<this->dimension_; i++ )
 		this->data_(i) = data(i);
-	
-	return 1;
-}
-
-int Simplex_Pt::set_disturbance( const matrix<double> &fdis ){
-	/* --------
-	Sets disturbance horizon
-	-------- */
-	if( fdis.size1() != this->FDIS_.size1() || fdis.size2() != this->FDIS_.size2() )
-		return 0;
-	for( unsigned int i=0 ; i<fdis.size1(); i++ ){
-		for( unsigned int j=0 ; j<fdis.size2(); j++ )
-			this->FDIS_(i,j) = fdis(i,j);
-	}
 	
 	return 1;
 }
@@ -158,6 +148,20 @@ int Simplex_Pt::set_matrices( matrix< double > J, matrix< double > dJ, matrix< d
 	return 1;
 }
 
+int Simplex_Pt::set_disturbance( const ublas::matrix< double > &fdis ){
+	/* --------
+	Fills disturbance preview
+	-------- */
+	if( this->FDIS_.size1() != fdis.size1() || this->FDIS_.size2() != fdis.size2() )
+		return 0;
+	for( unsigned int i=0; i<fdis.size1(); i++ ){
+		for( unsigned int j=0; j<fdis.size2(); j++ )
+			this->FDIS_(i,j) = fdis(i,j);
+	}
+
+	return 1;
+}
+
 void Simplex_Pt::reset_all(){
 	/* --------
 	Resets all vectors and matrices to zero (size is kept)
@@ -206,7 +210,6 @@ double Simplex_Pt::func(){
 			
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
-
 	identity_matrix< double > id3							( 3 );
 	identity_matrix< double > id2							( 2 );
 	vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
