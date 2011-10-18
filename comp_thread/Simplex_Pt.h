@@ -23,7 +23,7 @@ struct Constants_holder{
 	int state;
 	int des_state;
 
-	//Some stuff to fill simplex points
+	/* -------- Some stuff to fill simplex points ---------- */
 	double  M_, zc_, g_, dt_, h_;
 	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
 	ublas::vector< double > xdes_;			// Manipulation tas		desired position

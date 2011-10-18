@@ -96,8 +96,8 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		for( int vertex=0; vertex<this->numvars_+1; vertex++ )
 			S1 += pow( this->errors_(vertex) - F2, 2. );
 		double T = sqrt( S1 / this->numvars_ );
-		if( T <= epsilon )
-			break;			// We reached convergence, let's get outta here
+		if( T <= epsilon )	// We reached convergence, let's get outta here
+			break;			
 		else{				// We got more things to do then...
 			/* -------- Computing centroid - except from highest -------- */
 			ublas::vector< double > centroid_data;
@@ -116,8 +116,9 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 			/* -------- Starting with reflection -------- */
 			this->reflect_simplex();
 			this->currenterror_ = this->guess_.func();
-			if( this->currenterror_ < this->errors_(this->lowest_) ){
+			if( this->currenterror_ < this->errors_(this->lowest_) ){ //Then this is Good
 				double tmp = this->currenterror_;
+				/* -------- Trying expansion -------- */
 				this->expand_simplex();
 				this->currenterror_ = this->guess_.func();
 				if( this->currenterror_ < tmp )
@@ -127,9 +128,9 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->accept_reflected_point();
 				}
 			}
-			else if( this->currenterror_ <= this->errors_(this->secondhighest_) )
+			else if( this->currenterror_ <= this->errors_(this->secondhighest_) )	//Then this is OK
 				this->accept_reflected_point();
-			else if( this->currenterror_ <= this->errors_(this->highest_) ){
+			else if( this->currenterror_ <= this->errors_(this->highest_) ){		//Then this is OK
 				this->accept_reflected_point();
 				/* -------- Trying contraction -------- */
 				this->contract_simplex();
@@ -140,6 +141,7 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->multiple_contract_simplex();
 			}
 			else if( this->currenterror_ >= this->errors_(this->highest_) ){
+				/* -------- Trying contraction -------- */
 				this->contract_simplex();
 				this->currenterror_ = this->guess_.func();
 				if( this->currenterror_ < this->errors_(this->highest_) )

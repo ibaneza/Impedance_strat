@@ -31,16 +31,20 @@ int main(int argc, char** argv) {
         }
     }
 
-
     /*-------- Init program value ----------*/
     std::string msg;
     SpiropsCom SC(hostname, port);
+	gPerso.set_coeffs( Qt, Qe );
 
     /*------- Let's rock!!! ----------*/
     while(SC.isConnected()) {
         msg = SC.recv_message(verbose);
-        gPerso.analyse_message(msg);
-        msg = gPerso.get_message();
+		if( gPerso.analyse_message(msg) ){
+			gPerso.update();
+			msg = gPerso.get_message();
+		}
+		else
+			msg = "COMP_THREAD_ERROR";
         SC.send_message(msg);
     }
 

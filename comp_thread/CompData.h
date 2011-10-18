@@ -14,16 +14,21 @@ using namespace boost::numeric;
 
 struct Comp{
 	
-	//Some stuff to fill simplex points
+	/* -------- Some stuff to fill simplex points ---------- */
 	Constants_holder ch_;
-	//...
+	double Qt, Qe;
+	ublas::vector< double > guess_;
+	ublas::vector< double > increments_;
+	/* -------- Results ---------- */
+	ublas::vector< double > results_;
 
     Comp();
-    void Update(float elapsedTime, float LastThinkDt, int bJustThink);
+    void update();
     std::string get_message();
     int analyse_message(std::string msg);
 	void fill_matrix( ublas::matrix< double > &mat, std::istringstream &in );
 	void fill_vector( ublas::vector< double > &vec, std::istringstream &in );
+	void set_coeffs( double Qt, double Qe ){ this->Qt = Qt; this->Qe = Qe; };
 
 };
 

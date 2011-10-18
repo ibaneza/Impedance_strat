@@ -15,17 +15,19 @@ public:
 	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );	
 
 private:
+	/* -------- Init-related stuff ---------- */
 	ublas::vector< double > increments_;
-	Simplex_Pt guess_;
-	double kR_, kE_, kC_;
 	int numvars_;
+	/* -------- Minimization-related stuff ---------- */
+	double kR_, kE_, kC_;
 	ublas::vector< Simplex_Pt > simplex_;
+	Simplex_Pt guess_;
 	int lowest_, highest_, secondhighest_;
 	ublas::vector< double > errors_;
 	double currenterror_;
 
 private:
-	//Some stuff to fill simplex points
+	/* -------- Some stuff to fill simplex points ---------- */
 	Constants_holder ch_;
 	double QtonR, QeonR;				// It's all in the title
 	void set_coeff( double Qt, double Qe ){ this->QtonR=Qt; this->QeonR=Qe;};
