@@ -4,7 +4,8 @@
 
 using namespace boost::numeric::ublas;
 
-Simplex::Simplex(double kR, double kE, double kC):kR_(kR),kE_(kE),kC_(kC){
+Simplex::Simplex(double Qt, double Qe, double kR, double kE, double kC):kR_(kR),kE_(kE),kC_(kC){
+	this->set_coeff( Qt, Qe );
 }
 
 Simplex::~Simplex(){}
@@ -19,15 +20,21 @@ void Simplex::_reset(){
 	currenterror_ = 0.;
 }
 
-void Simplex::reset( vector< double > guess, vector< double > increments ){
+void Simplex::reset( vector< double > guess, vector< double > increments, Constants_holder ch ){
 	/*--------
 	Initializes Simplex
 	--------*/
 	this->_reset();
+	this->ch_ = ch;
 	this->numvars_ = guess.size();
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	//Probably more to do to correctly initialize a Simplex_Pt object
+	this->guess_.set_coeff( this->QtonR, this->QeonR );
 	this->guess_.set_data( guess );
+	if( !this->guess_.init( this->ch_, this->numvars_ ) ){
+		std::cout<<"ERROR! SIMPLEX POINT NOT CORRECTLY INITIALIZED!"<<std::endl;
+		return;
+	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	this->increments_.resize(increments.size());
 	for( unsigned int i=0; i<increments.size(); i++ ) increments_(i) = increments(i);
@@ -39,7 +46,8 @@ void Simplex::reset( vector< double > guess, vector< double > increments ){
 	//Probably more to do to correctly initialize a Simplex_Pt object
 	for( int i=0; i<this->numvars_ + 3; i++ ){
 		this->simplex_(i).set_data( guess );
-		//.....
+		this->simplex_(i).set_coeff( this->QtonR, this->QeonR );
+		this->simplex_(i).init( this->ch_, this->numvars_ );
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 
@@ -62,6 +70,7 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	/*--------
 	Minimizes: simplex rolls downhill
 	--------*/
+	double ipct = 0., ipct_p = 0.;
 	for( int iter=0; iter<maxiters; iter++ ){
 		/* -------- Identifying highest, second highest, and lowest vertices -------- */
 		this->highest_ = 0;
@@ -139,6 +148,9 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->multiple_contract_simplex();
 			}
 		}
+		modf( 10*(double)iter/(double)maxiters, &ipct );
+		if( ipct > ipct_p ) std::cout<<10*ipct<<"% >> error = "<<this->errors_(this->lowest_)<<std::endl;
+		ipct_p = ipct;
 	}
 	return this->simplex_(this->lowest_).get_data();
 }

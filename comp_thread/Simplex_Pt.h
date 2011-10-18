@@ -16,6 +16,29 @@
 
 using namespace boost::numeric;
 
+struct Constants_holder{
+	Constants_holder():des_state(16),state(0){};
+	~Constants_holder(){};
+
+	int state;
+	int des_state;
+
+	//Some stuff to fill simplex points
+	double  M_, zc_, g_, dt_, h_;
+	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
+	ublas::vector< double > xdes_;			// Manipulation tas		desired position
+	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
+	ublas::matrix< double > dJJi_, JtiHJi_;	// Some Jacobian		composites
+	ublas::matrix< double > Pref_;			// ZMP		position
+	ublas::matrix< double > FDIS_;			// Total Disturbance	force Horizon
+
+	int fill_matrix( ublas::matrix< double > src, ublas::matrix< double > dest );
+	int fill_vector( ublas::vector< double > src, ublas::vector< double > dest );
+	template <typename T> int fill_scalar( T src, T dest ){ dest = src; state++; };
+	int get_state(){	return (state>=des_state)?1:0; };
+	int assume_state(){ this->state = des_state; return get_state(); };
+};
+
 class Simplex_Pt{
 public:
 	Simplex_Pt( int mode=SIMPLEX_MODE_U_KPCONST );
@@ -28,26 +51,26 @@ private:
 	int rank_;						// Rank amongst simplex points
 	int dimension_;					// Number of parameters
 	int mode_;						// Parameter space
+
+	/* -------- User-given stuff ---------- */
+	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
+	ublas::vector< double > xdes_;			// Manipulation tas		desired position
+	ublas::matrix< double > Pref_;			// ZMP					reference position
+	ublas::matrix< double > FDIS_;			// Total Disturbance	force Horizon
+	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
+	ublas::matrix< double > dJJi_, JtiHJi_;	// Some Jacobian		composites
+	double M_, zc_, gravity_, dt_, h_;	//	Total mass, CoM altitude (assumed constant), 
+										// ... Gravity Constant, Time increment, Preview horizon
 	
 	/* -------- Objective function-related stuff -------- */
 	double QtonR, QeonR;				// It's all in the title
-
-	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
-	ublas::vector< double > xdes_;			// Manipulation tas		desired position
 
 	ublas::vector< double > Ux_, Uy_;	// CoM					input jerk
 	ublas::vector< double > Kp_, Kd_;	// Manipulation task	PD gains
 
 	ublas::matrix< double > Xc_, Yc_;	// CoM		position
 	ublas::matrix< double > X_, Y_, Z_;	// Effector	position
-	ublas::matrix< double > P_, Pref_;	// ZMP		position
-	
-	double M_, zc_, gravity_, dt_, h_;	//	Total mass, CoM altitude (assumed constant), 
-										// ... Gravity Constant, Time increment, Preview horizon
-
-	ublas::matrix< double > FDIS_;			// Total Disturbance	force Horizon
-	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
-	ublas::matrix< double > dJJi_, JtiHJi_;	// Some Jacobian		composites
+	ublas::matrix< double > P_;	// ZMP		position	
 
 	ublas::matrix< double > A_;			// Time integration matrix
 	ublas::vector< double > B_;			// Time integration vector
@@ -67,12 +90,12 @@ public:
 	int set_matrices( ublas::matrix< double > J, ublas::matrix< double > dJ, ublas::matrix< double > Ji, ublas::matrix< double > dJJi, ublas::matrix< double > JtiHJi );
 	int set_disturbance( const ublas::matrix< double > &fdis );
 	/* -------- Init -------- */
-	int init_size();
+	int init( Constants_holder ch, int dim );
+	int init_size( int dim );
 	void reset_all();
 	double func();
 	/* -------- Getters -------- */
 	ublas::vector< double > get_data(){ return this->data_; };
 };
-
 
 #endif // _SIMPLEX_PT_HEADER_

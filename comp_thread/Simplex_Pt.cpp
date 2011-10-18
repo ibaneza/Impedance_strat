@@ -8,14 +8,37 @@ Simplex_Pt::Simplex_Pt( int mode ){
 
 Simplex_Pt::~Simplex_Pt(){}
 
-int Simplex_Pt::init_size(){
+int Simplex_Pt::init( Constants_holder ch, int dim ){
+	/* --------
+	Initializes ALL except data and coefficents!
+	--------- */
+	if( !ch.get_state() )
+		return 0;
+	if( !this->set_constants( ch.M_, ch.zc_, ch.g_, ch.dt_, ch.h_ ) )
+		return 0;
+	if( !init_size( dim ) )
+		return 0;
+	if( !this->set_current_kinematics( ch.x_, ch.dx_, ch.ddx_ ) )
+		return 0;
+	if( !this->set_desired_kinematics( ch.xdes_, ch.Pref_ ) )
+		return 0;
+	if( !this->set_matrices( ch.J_, ch.dJ_, ch.Ji_, ch.dJJi_, ch.JtiHJi_ ) )
+		return 0;
+	if( !this->set_disturbance( ch.FDIS_ ) )
+		return 0;
+
+	return 1;
+}
+
+int Simplex_Pt::init_size( int dim ){
 	/* --------
 	Initializes vectors and matrices at the right dimension,
 	assuming data preview has already been given 
 	along with horizon and time increment
 	--------- */
-	if( this->dimension_ <= 0 )
+	if( dim <= 0 )
 		return 0;
+	this->dimension_ = dim;
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	// Check dimension/horizon/mode consistency
 	int dimension = (int) this->h_;
@@ -168,10 +191,9 @@ void Simplex_Pt::reset_all(){
 	-------- */
 	Ux_ = zero_vector< double > ( Ux_.size() ); Uy_ = zero_vector< double > ( Uy_.size() );
 	Kp_ = zero_vector< double > ( Kp_.size() ); Kd_ = zero_vector< double > ( Kd_.size() );
-	xdes_ = zero_vector< double > ( xdes_.size() );
 	Xc_ = zero_matrix< double > ( Xc_.size1(), Xc_.size2() ); Yc_ = zero_matrix< double > ( Yc_.size1(), Yc_.size2() );
 	X_ = zero_matrix< double > ( X_.size1(), X_.size2() ); Y_ = zero_matrix< double > ( Y_.size1(), Y_.size2() ); Z_ = zero_matrix< double > ( Z_.size1(), Z_.size2() );
-	P_ = zero_matrix< double > ( P_.size1(), P_.size2() ); Pref_ = zero_matrix< double > ( Pref_.size1(), Pref_.size2() );
+	P_ = zero_matrix< double > ( P_.size1(), P_.size2() ); 
 }
 
 double Simplex_Pt::func(){
@@ -285,3 +307,26 @@ double Simplex_Pt::func(){
 	}
 	return evalf;
 }
+
+int Constants_holder::fill_matrix(matrix<double> src, matrix<double> dest ){
+	int sz1 = src.size1(), sz2 = src.size2();
+	dest.resize( sz1,sz2 );
+	for( int i=0; i<sz1; i++ ){
+		for( int j=0; j<sz1; j++ )
+			dest(i,j) = src(i,j);
+	}
+	state++;
+	
+	return 1;
+}
+
+int Constants_holder::fill_vector(vector<double> src, vector<double> dest ){
+	int sz = src.size();
+	dest.resize( sz );
+	for( int i=0; i<sz; i++ )
+		dest(i) = src(i);
+	state++;
+
+	return 1;
+}
+

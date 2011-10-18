@@ -7,11 +7,13 @@ using namespace boost::numeric;
 
 class Simplex{
 public:
-	Simplex( double kR=-1., double kE=2., double kC=.5 );
+	Simplex( double Qt, double Qe, double kR=-1., double kE=2., double kC=.5 );
 	~Simplex();
-	void reset( ublas::vector< double > guess, ublas::vector< double > increments );
+	void reset( ublas::vector< double > guess, ublas::vector< double > increments, 
+						Constants_holder ch );
 	void _reset();
-	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );
+	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );	
+
 private:
 	ublas::vector< double > increments_;
 	Simplex_Pt guess_;
@@ -24,13 +26,9 @@ private:
 
 private:
 	//Some stuff to fill simplex points
-	int  M, zc, g, dt, h;
-	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
-	ublas::vector< double > xdes_;			// Manipulation tas		desired position
-	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
-	ublas::matrix< double > dJJi_, JtiHJi_;	// Some Jacobian		composites
-	ublas::matrix< double > Pref_;			// ZMP		position
-	ublas::matrix< double > FDIS_;			// Total Disturbance	force Horizon
+	Constants_holder ch_;
+	double QtonR, QeonR;				// It's all in the title
+	void set_coeff( double Qt, double Qe ){ this->QtonR=Qt; this->QeonR=Qe;};
 
 private:
 	void compute_error_at_vertices();
