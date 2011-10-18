@@ -54,7 +54,7 @@ private:
 
 	/* -------- User-given stuff ---------- */
 	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
-	ublas::vector< double > xdes_;			// Manipulation tas		desired position
+	ublas::vector< double > xdes_;			// Manipulation task	desired position
 	ublas::matrix< double > Pref_;			// ZMP					reference position
 	ublas::matrix< double > FDIS_;			// Total Disturbance	force Horizon
 	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
