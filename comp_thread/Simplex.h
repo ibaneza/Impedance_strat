@@ -7,7 +7,7 @@ using namespace boost::numeric;
 
 class Simplex{
 public:
-	Simplex( double Qt, double Qe, double kR=-1., double kE=2., double kC=.5 );
+	Simplex( double Qt = 0., double Qe=0., double kR=-1., double kE=2., double kC=.5 );
 	~Simplex();
 	void reset( ublas::vector< double > guess, ublas::vector< double > increments, 
 						Constants_holder ch );
@@ -15,6 +15,7 @@ public:
 	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );	
 
 private:
+	ublas::vector< double > stats_;
 	/* -------- Init-related stuff ---------- */
 	ublas::vector< double > increments_;
 	int numvars_;

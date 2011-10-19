@@ -24,7 +24,8 @@ struct Constants_holder{
 	int des_state;
 
 	/* -------- Some stuff to fill simplex points ---------- */
-	double  M_, zc_, g_, dt_, h_;
+	double  M_, zc_, g_, dt_, h_, kpinit_;
+	int mode_;
 	ublas::vector< double > x_, dx_, ddx_;	// Manipulation task	current position, velocity, acceleration
 	ublas::vector< double > xdes_;			// Manipulation tas		desired position
 	ublas::matrix< double > J_, dJ_, Ji_;	// Some Jacobian		derivates
@@ -80,6 +81,8 @@ private:
 	
 public:
 	/* -------- Setters -------- */
+	void set_mode( int mode )
+				{ this->mode_ = mode;};
 	void set_coeff( double Qt, double Qe )
 				{ this->QtonR=Qt; this->QeonR=Qe;};
 	int set_data( const ublas::vector<double> &data );

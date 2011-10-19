@@ -12,20 +12,20 @@ int Simplex_Pt::init( Constants_holder ch, int dim ){
 	/* --------
 	Initializes ALL except data and coefficents!
 	--------- */
-	if( !ch.get_state() )
-		return 0;
-	if( !this->set_constants( ch.M_, ch.zc_, ch.g_, ch.dt_, ch.h_ ) )
-		return 0;
-	if( !init_size( dim ) )
-		return 0;
-	if( !this->set_current_kinematics( ch.x_, ch.dx_, ch.ddx_ ) )
-		return 0;
-	if( !this->set_desired_kinematics( ch.xdes_, ch.Pref_ ) )
-		return 0;
-	if( !this->set_matrices( ch.J_, ch.dJ_, ch.Ji_, ch.dJJi_, ch.JtiHJi_ ) )
-		return 0;
-	if( !this->set_disturbance( ch.FDIS_ ) )
-		return 0;
+	if( !ch.get_state() ){
+		std::cout<<1;return 0;}
+	if( !this->set_constants( ch.M_, ch.zc_, ch.g_, ch.dt_, ch.h_ ) ){
+		std::cout<<2;return 0;}
+	if( !init_size( dim ) ){
+		std::cout<<3;return 0;}
+	if( !this->set_current_kinematics( ch.x_, ch.dx_, ch.ddx_ ) ){
+		std::cout<<4;return 0;}
+	if( !this->set_desired_kinematics( ch.xdes_, ch.Pref_ ) ){
+		std::cout<<5;return 0;}
+	if( !this->set_matrices( ch.J_, ch.dJ_, ch.Ji_, ch.dJJi_, ch.JtiHJi_ ) ){
+		std::cout<<6;return 0;}
+	if( !this->set_disturbance( ch.FDIS_ ) ){
+		std::cout<<7;return 0;}
 
 	return 1;
 }
@@ -52,18 +52,23 @@ int Simplex_Pt::init_size( int dim ){
 		case SIMPLEX_MODE_U_KPCONST:
 			if( this->dimension_ != (2*this->h_+1) ) return 0;
 			break;
+		case SIMPLEX_MODE_U:
+			if( this->dimension_ != (2*this->h_) ) return 0;
+			break;
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 
-	Ux_.resize(dimension); Uy_.resize(dimension);
-	Kp_.resize(dimension); Kd_.resize(dimension);
-	Xc_.resize(3,dimension); Yc_.resize(3,dimension);
-	X_.resize(3,dimension); Y_.resize(3,dimension); Z_.resize(3,dimension);
-	P_.resize(2,dimension); Pref_.resize(2,dimension);
-	FDIS_.resize(3,dimension);
+	if( Ux_.size() != dimension ){
+		Ux_.resize(dimension); Uy_.resize(dimension);
+		Kp_.resize(dimension); Kd_.resize(dimension);
+		Xc_.resize(3,dimension); Yc_.resize(3,dimension);
+		X_.resize(3,dimension); Y_.resize(3,dimension); Z_.resize(3,dimension);
+		P_.resize(2,dimension); Pref_.resize(2,dimension);
+		FDIS_.resize(3,dimension);
 
-	x_.resize( 3 ); dx_.resize( 3 ); ddx_.resize( 3 );
-	xdes_.resize( 3 );
+		x_.resize( 3 ); dx_.resize( 3 ); ddx_.resize( 3 );
+		xdes_.resize( 3 );
+	}
 
 	return 1;
 }
@@ -74,8 +79,11 @@ int Simplex_Pt::set_data( const vector<double> &data ){
 	-------- */
 	if( data.size() != this->dimension_ )
 		return 0;
-	for( int i=0 ; i<this->dimension_; i++ )
-		this->data_(i) = data(i);
+	if( this->data_.size() != this->dimension_ )
+		this->data_.resize( this->dimension_ );
+	this->data_ = vector< double > (data);
+	/*for( int i=0 ; i<this->dimension_; i++ )
+		this->data_(i) = data(i);*/
 	
 	return 1;
 }
@@ -229,6 +237,14 @@ double Simplex_Pt::func(){
 				this->Kd_(k) = sqrt( this->Kp_(k) );
 			}
 			break;
+		case SIMPLEX_MODE_U:
+			for( int k=0; k<this->h_; k++ ){
+				this->Ux_(k) = this->data_(k);
+				this->Uy_(k) = this->data_((int)this->h_+k);
+				this->Kp_(k) = this->Kpinit_;
+				this->Kd_(k) = sqrt( this->Kp_(k) );
+			}
+			break;
 			
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
@@ -245,6 +261,7 @@ double Simplex_Pt::func(){
 		double uxk, uyk, Kpk, Kdk;
 		uxk = Ux_( k ); uyk = Uy_( k );
 		Kpk = Kp_( k ); Kdk = Kd_( k );
+		evalf += 1.e-2 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
 		Ke = Kpk * this->JtiHJi_;
 		Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
 		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
@@ -269,6 +286,7 @@ double Simplex_Pt::func(){
 			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
 		}
 		Fk += prod( Ke, vtmp3 );
+		Fk += -column( this->FDIS_, k );
 		/* -------- Computing ZMP position -------- */
 		dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
 		vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
@@ -277,11 +295,13 @@ double Simplex_Pt::func(){
 			else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
 		}
 		/* -------- Adding ZMP tracking error to objective -------- */
-		evalf += inner_prod( column( P_,k ) - column( Pref_,k ), 
+		evalf += 1. / norm_2( column( Pref_,k ) ) 
+			* inner_prod( column( P_,k ) - column( Pref_,k ), 
 			prod( this->QeonR * id2, column( P_,k ) - column( Pref_,k ) ) );
 		/* -------- Adding Manipulation tracking error to objective -------- */
 		vtmp3(0) = X_(0,k); vtmp3(1) = Y_(0,k); vtmp3(2) = Z_(0,k);
-		evalf += inner_prod( vtmp3 - xdes_, 
+		evalf += 1. / norm_2( xdes_ ) 
+			* inner_prod( vtmp3 - xdes_, 
 			prod( this->QtonR * id3, vtmp3 - xdes_ ) );
 		if( k<(this->h_-1) ){
 			/* -------- Integrating CoM position -------- */
@@ -300,8 +320,10 @@ double Simplex_Pt::func(){
 			Z_(1,k+1) = Z_(1,k) + dt_*Z_(2,k);
 			Z_(2,k+1) = ddx_cmd(2);
 			/* -------- Adding Input change to objective -------- */
-			vtmp2(0) = Ux_(k+1)-Ux_(k);
-			vtmp2(1) = Uy_(k+1)-Uy_(k);
+			if( Ux_(k+1)!=0. ) vtmp2(0) = ( Ux_(k+1)-Ux_(k) ) / Ux_(k+1);
+			else vtmp2(0) = 0.;
+			if( Uy_(k+1)!=0. ) vtmp2(1) = ( Uy_(k+1)-Uy_(k) ) / Uy_(k+1);
+			else vtmp2(1) = 0.;
 			evalf += inner_prod( vtmp2, vtmp2 );
 		}
 	}

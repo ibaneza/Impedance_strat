@@ -14,6 +14,8 @@ int main(int argc, char** argv) {
     char hostname[128];
     int port;
 	double Qt,Qe;
+	double epsilon;
+	int maxiters;
     bool verbose=false;
     for (int i=0; i<argc; i++){
         if (!strncmp(argv[i], "-socket", 7)){
@@ -29,6 +31,12 @@ int main(int argc, char** argv) {
 		else if (!strncmp(argv[i], "-qe", 8)) {
             Qe = atof( argv[i+1] );
         }
+		else if (!strncmp(argv[i], "-epsilon", 8)) {
+            epsilon = atof( argv[i+1] );
+        }
+		else if (!strncmp(argv[i], "-maxiters", 8)) {
+            maxiters = atoi( argv[i+1] );
+        }
     }
 
     /*-------- Init program value ----------*/
@@ -38,13 +46,16 @@ int main(int argc, char** argv) {
 
     /*------- Let's rock!!! ----------*/
     while(SC.isConnected()) {
+		if( verbose ) std::cout<<"C++>>RECEIVING"<<std::endl;
         msg = SC.recv_message(verbose);
+		if( verbose ) std::cout<<"C++>>PARSING"<<std::endl;
 		if( gPerso.analyse_message(msg) ){
-			gPerso.update();
+			gPerso.update(epsilon,maxiters);
+			if( verbose ) std::cout<<"C++>>SENDING"<<std::endl;
 			msg = gPerso.get_message();
 		}
 		else
-			msg = "COMP_THREAD_ERROR";
+			if( verbose ) msg = "COMP_THREAD_ERROR";
         SC.send_message(msg);
     }
 

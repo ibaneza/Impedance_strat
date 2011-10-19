@@ -54,7 +54,7 @@ SpiropsCom::~SpiropsCom()
 }
 
 
-#define SPIROPSCOM_MAX_LEN 2048 /// WARNING: it doesn't work with 1024
+#define SPIROPSCOM_MAX_LEN 8192 /// WARNING: it doesn't work with 4096
 std::string SpiropsCom::recv_message(bool verbose)
 {
 

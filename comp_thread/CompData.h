@@ -13,7 +13,7 @@
 using namespace boost::numeric;
 
 struct Comp{
-	
+	Simplex simplexe_;
 	/* -------- Some stuff to fill simplex points ---------- */
 	Constants_holder ch_;
 	double Qt, Qe;
@@ -23,12 +23,12 @@ struct Comp{
 	ublas::vector< double > results_;
 
     Comp();
-    void update();
+    void update(double epsilon = 1., int maxiters = 500);
     std::string get_message();
     int analyse_message(std::string msg);
 	void fill_matrix( ublas::matrix< double > &mat, std::istringstream &in );
 	void fill_vector( ublas::vector< double > &vec, std::istringstream &in );
-	void set_coeffs( double Qt, double Qe ){ this->Qt = Qt; this->Qe = Qe; };
+	void set_coeffs( double Qt, double Qe );
 
 };
 

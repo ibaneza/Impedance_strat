@@ -11,15 +11,21 @@ Comp::Comp(){
 }
 
 
-void Comp::update() {
+void Comp::update(double epsilon, int maxiters) {
 	/*-------- 
 	Does stuff
 	--------*/ 
 	std::cout<<"is computing..."<<std::endl;
-	Simplex simplexe( this->Qt, this->Qe );
-	simplexe.reset( this->guess_, this->increments_, this->ch_ );
-	this->results_ = simplexe.minimize( 1., 2500 );
+	this->simplexe_.reset( this->guess_, this->increments_, this->ch_ );
+	this->results_ = this->simplexe_.minimize( epsilon, maxiters );
+	std::cout<<"has computed."<<std::endl;
 	std::cout<<std::endl;
+}
+
+void Comp::set_coeffs( double Qt, double Qe ){	
+	this->Qt = Qt; this->Qe = Qe;
+	this->simplexe_ = Simplex( this->Qt, this->Qe );
+	std::cout<<"****************\n\tSimplex Object initialized.\n****************"<<std::endl;
 }
 
 std::string Comp::get_message() {
@@ -27,8 +33,9 @@ std::string Comp::get_message() {
 	Writes Message
 	--------*/ 
     std::ostringstream oss (std::ostringstream::out);
+	oss << this->results_.size()<<"\n";
 	for( unsigned int i=0; i<this->results_.size(); i++ )
-		oss <<results_(i)<<" \n";
+		oss <<results_(i)<<"\n";
     return oss.str();
 }
 
@@ -39,28 +46,30 @@ int Comp::analyse_message(std::string msg) {
     std::string str, s;
 	
     std::istringstream iss(msg);
+	int count = 0;
     while ( getline(iss, str)){
         std::istringstream in(str);
         in >> s;
-		if      (s=="Constants")	in>>ch_.M_>>
+		if      (s=="Constants"){	in>>ch_.M_>>
 										ch_.zc_>>
 										ch_.g_>>
 										ch_.dt_>>
-										ch_.h_;
-		else if (s=="Jacobian")		fill_matrix( ch_.J_			, in );
-		else if (s=="dJacobian")	fill_matrix( ch_.dJ_		, in );
-		else if (s=="JacobianI")	fill_matrix( ch_.Ji_		, in );
-		else if (s=="dJJi")			fill_matrix( ch_.dJJi_		, in );
-		else if (s=="JtiHJi")		fill_matrix( ch_.JtiHJi_	, in );
-		else if (s=="Pref")			fill_matrix( ch_.Pref_		, in );
-		else if (s=="FDIS")			fill_matrix( ch_.FDIS_		, in );
-		else if (s=="x")			fill_vector( ch_.x_			, in );
-		else if (s=="dx")			fill_vector( ch_.dx_		, in );
-		else if (s=="ddx")			fill_vector( ch_.ddx_		, in );
-		else if (s=="xdes")			fill_vector( ch_.xdes_		, in );
+										ch_.h_>>
+										ch_.mode_>>ch_.kpinit_; count+=7;}
+		else if (s=="Jacobian"){		fill_matrix( ch_.J_			, in );count++;}
+		else if (s=="dJacobian"){		fill_matrix( ch_.dJ_		, in );count++;}
+		else if (s=="JacobianI"){		fill_matrix( ch_.Ji_		, in );count++;}
+		else if (s=="dJJi"){			fill_matrix( ch_.dJJi_		, in );count++;}
+		else if (s=="JtiHJi"){			fill_matrix( ch_.JtiHJi_	, in );count++;}
+		else if (s=="Pref"){			fill_matrix( ch_.Pref_		, in );count++;}
+		else if (s=="FDIS"){			fill_matrix( ch_.FDIS_		, in );count++;}
+		else if (s=="x"){				fill_vector( ch_.x_			, in );count++;}
+		else if (s=="dx"){				fill_vector( ch_.dx_		, in );count++;}
+		else if (s=="ddx"){				fill_vector( ch_.ddx_		, in );count++;}
+		else if (s=="xdes"){			fill_vector( ch_.xdes_		, in );count++;}
 		/* -------- Parameters -------- */
-		else if (s=="guess")		fill_vector( this->guess_		, in );
-		else if (s=="increments")	fill_vector( this->increments_	, in );
+		else if (s=="guess"){			fill_vector( this->guess_		, in );count++;}
+		else if (s=="increments"){		fill_vector( this->increments_	, in );count++;}
     }
 	return this->ch_.assume_state();
 }

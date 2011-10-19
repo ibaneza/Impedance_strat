@@ -1,5 +1,7 @@
 #include "Simplex.h"
 
+#include <time.h>
+
 #include <stdlib.h>
 
 using namespace boost::numeric::ublas;
@@ -18,6 +20,7 @@ void Simplex::_reset(){
 	highest_ = -1;
 	secondhighest_ = -1;
 	currenterror_ = 0.;
+	this->stats_ = zero_vector< double > (3);
 }
 
 void Simplex::reset( vector< double > guess, vector< double > increments, Constants_holder ch ){
@@ -30,11 +33,14 @@ void Simplex::reset( vector< double > guess, vector< double > increments, Consta
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	//Probably more to do to correctly initialize a Simplex_Pt object
 	this->guess_.set_coeff( this->QtonR, this->QeonR );
-	this->guess_.set_data( guess );
+	this->guess_.set_mode( this->ch_.mode_ );
+	this->guess_.set_kpinit( this->ch_.kpinit_ );
+	//std::cout<<"Simplex::reset>>NUMVARS = "<<this->numvars_<<std::endl;
 	if( !this->guess_.init( this->ch_, this->numvars_ ) ){
-		std::cout<<"ERROR! SIMPLEX POINT NOT CORRECTLY INITIALIZED!"<<std::endl;
+		std::cout<<" ERROR! SIMPLEX POINT NOT CORRECTLY INITIALIZED!"<<std::endl;
 		return;
 	}
+	this->guess_.set_data( guess );
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	this->increments_.resize(increments.size());
 	for( unsigned int i=0; i<increments.size(); i++ ) increments_(i) = increments(i);
@@ -45,9 +51,11 @@ void Simplex::reset( vector< double > guess, vector< double > increments, Consta
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	//Probably more to do to correctly initialize a Simplex_Pt object
 	for( int i=0; i<this->numvars_ + 3; i++ ){
-		this->simplex_(i).set_data( guess );
 		this->simplex_(i).set_coeff( this->QtonR, this->QeonR );
+		this->simplex_(i).set_mode( this->ch_.mode_ );
+		this->simplex_(i).set_kpinit( this->ch_.kpinit_ );
 		this->simplex_(i).init( this->ch_, this->numvars_ );
+		this->simplex_(i).set_data( guess );
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 
@@ -70,8 +78,13 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	/*--------
 	Minimizes: simplex rolls downhill
 	--------*/
+	clock_t start, end;
+	double elapsed;
+	start = clock();
 	double ipct = 0., ipct_p = 0.;
-	for( int iter=0; iter<maxiters; iter++ ){
+	double CV;
+	int iter;
+	for( iter=0; iter<maxiters; iter++ ){
 		/* -------- Identifying highest, second highest, and lowest vertices -------- */
 		this->highest_ = 0;
 		this->lowest_ = 0;
@@ -96,6 +109,7 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		for( int vertex=0; vertex<this->numvars_+1; vertex++ )
 			S1 += pow( this->errors_(vertex) - F2, 2. );
 		double T = sqrt( S1 / this->numvars_ );
+		CV = T;
 		if( T <= epsilon )	// We reached convergence, let's get outta here
 			break;			
 		else{				// We got more things to do then...
@@ -151,9 +165,24 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 			}
 		}
 		modf( 10*(double)iter/(double)maxiters, &ipct );
-		if( ipct > ipct_p ) std::cout<<10*ipct<<"% >> error = "<<this->errors_(this->lowest_)<<std::endl;
+		if( ipct > ipct_p ) 
+			std::cout<<"\t| "<<10*ipct<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
 		ipct_p = ipct;
 	}
+	end = clock();
+	elapsed = ((double)end - start) / CLOCKS_PER_SEC;
+	for( int i=0; i<3; i++ ) this->stats_(i) = 100. * this->stats_(i) / iter;
+	std::cout<<"\n ****************************** \n\n";
+	if( iter < (maxiters-1) ) std::cout<<"\t u   u\n\t  \\o/ \n\t  _| CONVERGENCE!\n\t_|  \\_\n\t      |"<<std::endl;
+	else std::cout<<"\t  ____\n\t |    | \n\t o    | \n\t/|\\   | MAXI ITER EXIT!\n\t/ \\   | \n\t_____/|\\_"<<std::endl;
+	std::cout<<"\n ****************************** \n\n";
+	std::cout<<"\t\t|Simplex statistics on exit: Error = "<<this->errors_(this->lowest_)<<
+		", Iterations = "<<iter<<"/"<<maxiters<<std::endl;
+	std::cout<<"\t\t|\tContractions: "<<this->stats_(0)<<
+		" %\tExpansions: "<<this->stats_(1)<<
+		" %\tReflections: "<<this->stats_(2)<<" %"<<std::endl;
+	std::cout<<"\t\t|In "<<elapsed<<" s >> "<<elapsed/iter<<
+		" s per iteration >> Real time expansion x"<<(int) (elapsed / this->ch_.dt_)<<std::endl;
 	return this->simplex_(this->lowest_).get_data();
 }
 
@@ -209,16 +238,19 @@ void Simplex::accept_contracted_point(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > data( this->numvars_ );
 	this->errors_(this->highest_) = this->currenterror_;
 	this->simplex_(this->highest_).set_data( this->guess_.get_data() );
+	this->stats_(0)++;
 }
 
 void Simplex::accept_expanded_point(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > data( this->numvars_ );
 	this->errors_(this->highest_) = this->currenterror_;
 	this->simplex_(this->highest_).set_data( this->guess_.get_data() );
+	this->stats_(1)++;
 }
 
 void Simplex::accept_reflected_point(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > data( this->numvars_ );
 	this->errors_(this->highest_) = this->currenterror_;
 	this->simplex_(this->highest_).set_data( this->simplex_(this->numvars_+2).get_data() );
+	this->stats_(2)++;
 }
