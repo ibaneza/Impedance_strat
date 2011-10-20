@@ -17,6 +17,7 @@ void Comp::update(double epsilon, int maxiters) {
 	--------*/ 
 	std::cout<<"is computing..."<<std::endl;
 	this->simplexe_.reset( this->guess_, this->increments_, this->ch_ );
+	this->simplexe_.display_ = Display( "test" );
 	this->results_ = this->simplexe_.minimize( epsilon, maxiters );
 	std::cout<<"has computed."<<std::endl;
 	std::cout<<std::endl;
@@ -66,6 +67,9 @@ int Comp::analyse_message(std::string msg) {
 		else if (s=="x"){				fill_vector( ch_.x_			, in );count++;}
 		else if (s=="dx"){				fill_vector( ch_.dx_		, in );count++;}
 		else if (s=="ddx"){				fill_vector( ch_.ddx_		, in );count++;}
+		else if (s=="xc"){				fill_vector( ch_.xc_			, in );count++;}
+		else if (s=="dxc"){				fill_vector( ch_.dxc_		, in );count++;}
+		else if (s=="ddxc"){				fill_vector( ch_.ddxc_		, in );count++;}
 		else if (s=="xdes"){			fill_vector( ch_.xdes_		, in );count++;}
 		/* -------- Parameters -------- */
 		else if (s=="guess"){			fill_vector( this->guess_		, in );count++;}
@@ -88,7 +92,7 @@ void Comp::fill_matrix(matrix<double> &mat, std::istringstream &in){
 	}
 }
 
-void Comp::fill_vector(vector<double> &vec, std::istringstream &in){
+void Comp::fill_vector(ublas::vector<double> &vec, std::istringstream &in){
 	/*-------- 
 	Fills vector with istringstream data in = [nlin data....]
 	--------*/ 

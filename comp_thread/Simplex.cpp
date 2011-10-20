@@ -23,7 +23,7 @@ void Simplex::_reset(){
 	this->stats_ = zero_vector< double > (3);
 }
 
-void Simplex::reset( vector< double > guess, vector< double > increments, Constants_holder ch ){
+void Simplex::reset( ublas::vector< double > guess, ublas::vector< double > increments, Constants_holder ch ){
 	/*--------
 	Initializes Simplex
 	--------*/
@@ -74,7 +74,7 @@ void Simplex::reset( vector< double > guess, vector< double > increments, Consta
 	this->compute_error_at_vertices();
 }
 
-vector< double > Simplex::minimize( double epsilon, int maxiters ){
+ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	/*--------
 	Minimizes: simplex rolls downhill
 	--------*/
@@ -165,8 +165,11 @@ vector< double > Simplex::minimize( double epsilon, int maxiters ){
 			}
 		}
 		modf( 10*(double)iter/(double)maxiters, &ipct );
-		if( ipct > ipct_p ) 
+		if( ipct > ipct_p ) {
 			std::cout<<"\t| "<<10*ipct<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
+			this->simplex_( this->lowest_ ).func();
+			this->display_.showPreview( this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
+		}
 		ipct_p = ipct;
 	}
 	end = clock();

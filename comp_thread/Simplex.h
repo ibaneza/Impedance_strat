@@ -2,6 +2,7 @@
 #define _SIMPLEX_H_
 
 #include "Simplex_Pt.h"
+#include "Display.h"
 
 using namespace boost::numeric;
 
@@ -13,6 +14,9 @@ public:
 						Constants_holder ch );
 	void _reset();
 	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );	
+
+public:
+	Display display_;
 
 private:
 	ublas::vector< double > stats_;

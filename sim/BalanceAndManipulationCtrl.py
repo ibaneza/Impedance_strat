@@ -107,9 +107,9 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
     def update(self, pos, vel, counter=0., dt = 0.):
     ##A# New stuff
-        print 'Garbage collection'
-        gc.collect()
-        print 'Garbage collection DONE'
+        #print 'Garbage collection'
+        #gc.collect()
+        #print 'Garbage collection DONE'
         self.count += 1
         self.CanGrabBox = False
         dist = []
@@ -146,6 +146,10 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 ##A# Desired and actual positions
                 self.x_des = self.task.ctrl.goal[0:3,3]
                 self.x = self.task.ctrl.pos[0:3,3]
+
+                self.xc = array( [self.com_hat[0,0], self.com_hat[0,1]] )
+                self.dxc = array( [self.com_hat[1,0], self.com_hat[1,1]] )
+                self.ddxc = array( [self.com_hat[2,0], self.com_hat[2,1]] )
 
                 ##A# Actual velocity and acceleration
                 self.dx = self.task.ctrl.vel[0:3]
@@ -191,10 +195,10 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
         self.pref = zmp_ref
 
 
-        if self.mode == 0:
+        if self.mode == 0 or self.mode ==2: #MAYBE WE DONT NEED THIS ONE IN MODE 2
             Px, Pu = _get_matrices(self.h, self.dt, hong)
             ddV_com = - dot( inv(dot(Pu.T, Pu) + self.QonR*eye(self.h)), dot(Pu.T, dot(Px, com_hat) - zmp_ref) )
-        else:
+        elif self.mode == 1: #MAYBE WE ALSO NEED IT IN MODE 2
             FDIS = self.box_ctrl.ask_force()
             for i in range(2):
                 zmp_ref[:,i] = zmp_ref[:,i] - self.com_h/(self.Ma*self.gravity - FDIS[2,:])*1.*FDIS[i,:] #5.
@@ -225,6 +229,8 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                             maxi = abs(self.values[i])
                     boundaries[d:f] = .5*maxi
                 #boundaries[:] = 0.5*abs(self.values[:])
+                ##TO FORCE!!!
+                #boundaries = ones( 2*self.h + 1)
                 boundaries[2*self.h] = 20. * 1. / reduc
 
 
@@ -235,11 +241,12 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 self.comp_thread.set_kpinit( self.Kpinit )
 
                 FDIS = self.box_ctrl.ask_force()
+                print FDIS[0,:]
                 self.dJJi = dot( self.dJ,self.Ji )
                 self.comp_thread.set_constants( self.Ma, self.com_h, self.gravity, self.dt, self.h )
                 self.comp_thread.set_matrices( self.prevJ, self.dJ, self.Ji, self.dJJi, self.JtiHJi )
                 self.comp_thread.set_desired_kinematics( self.x_des, transpose(self.pref) )
-                self.comp_thread.set_current_kinematics( self.x, self.dx, self.ddx )
+                self.comp_thread.set_current_kinematics( self.x, self.dx, self.ddx, self.xc, self.dxc, self.ddxc )
                 self.comp_thread.set_disturbance( FDIS )
                 self.comp_thread.set_simplex_parameters( self.values[0:2*self.h], boundaries[0:2*self.h] )
 

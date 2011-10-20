@@ -18,7 +18,8 @@ int Simplex_Pt::init( Constants_holder ch, int dim ){
 		std::cout<<2;return 0;}
 	if( !init_size( dim ) ){
 		std::cout<<3;return 0;}
-	if( !this->set_current_kinematics( ch.x_, ch.dx_, ch.ddx_ ) ){
+	if( !this->set_current_kinematics( ch.x_, ch.dx_, ch.ddx_,
+		ch.xc_, ch.dxc_, ch.ddxc_) ){
 		std::cout<<4;return 0;}
 	if( !this->set_desired_kinematics( ch.xdes_, ch.Pref_ ) ){
 		std::cout<<5;return 0;}
@@ -67,6 +68,7 @@ int Simplex_Pt::init_size( int dim ){
 		FDIS_.resize(3,dimension);
 
 		x_.resize( 3 ); dx_.resize( 3 ); ddx_.resize( 3 );
+		xc_.resize( 2 ); dxc_.resize( 2 ); ddxc_.resize( 2 );
 		xdes_.resize( 3 );
 	}
 
@@ -88,7 +90,8 @@ int Simplex_Pt::set_data( const vector<double> &data ){
 	return 1;
 }
 
-int Simplex_Pt::set_current_kinematics( const vector<double> &x, const vector<double> &dx, const vector<double> &ddx ){
+int Simplex_Pt::set_current_kinematics( const vector<double> &x, const vector<double> &dx, const vector<double> &ddx,
+									   const vector<double> &xc, const vector<double> &dxc, const vector<double> &ddxc){
 	/* --------
 	Sets effector's current position
 	-------- */
@@ -98,6 +101,11 @@ int Simplex_Pt::set_current_kinematics( const vector<double> &x, const vector<do
 		this->x_(i) = x(i);
 		this->dx_(i) = dx(i);
 		this->ddx_(i) = ddx(i);
+		if( i<2 ){
+			this->xc_ (i) = xc(i);
+			this->dxc_ (i) = dxc(i);
+			this->ddxc_ (i) = ddxc(i);
+		}
 	}
 	
 	return 1;
@@ -257,11 +265,19 @@ double Simplex_Pt::func(){
 	vector< double, bounded_array< double, 3 > > Fk			( 3 );
 	matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > Ke, Ce;
 
+	/* -------- Initialization of Effector position -------- */
+	X_(0,0) = this->x_(0); X_(1,0) = this->dx_(0); X_(2,0) = this->ddx_(0);
+	Y_(0,0) = this->x_(1); Y_(1,0) = this->dx_(1); Y_(2,0) = this->ddx_(1);
+	Z_(0,0) = this->x_(2); Z_(1,0) = this->dx_(2); Z_(2,0) = this->ddx_(2);
+	/* -------- Initialization of CoM position -------- */
+	Xc_(0,0) = this->xc_(0); Xc_(1,0) = this->dxc_(0); Xc_(2,0) = this->ddxc_(0);
+	Yc_(0,0) = this->xc_(1); Yc_(1,0) = this->dxc_(1); Yc_(2,0) = this->ddxc_(1);
+
 	for( int k=0; k<this->h_; k++ ){
 		double uxk, uyk, Kpk, Kdk;
 		uxk = Ux_( k ); uyk = Uy_( k );
 		Kpk = Kp_( k ); Kdk = Kd_( k );
-		evalf += 1.e-2 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
+		evalf += .5e-1 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
 		Ke = Kpk * this->JtiHJi_;
 		Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
 		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
@@ -295,12 +311,12 @@ double Simplex_Pt::func(){
 			else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
 		}
 		/* -------- Adding ZMP tracking error to objective -------- */
-		evalf += 1. / norm_2( column( Pref_,k ) ) 
+		evalf += 1. / pow(norm_2( column( Pref_,k ) ),2 ) 
 			* inner_prod( column( P_,k ) - column( Pref_,k ), 
 			prod( this->QeonR * id2, column( P_,k ) - column( Pref_,k ) ) );
 		/* -------- Adding Manipulation tracking error to objective -------- */
 		vtmp3(0) = X_(0,k); vtmp3(1) = Y_(0,k); vtmp3(2) = Z_(0,k);
-		evalf += 1. / norm_2( xdes_ ) 
+		evalf += 1. / pow( norm_2( xdes_ ) ,2 )
 			* inner_prod( vtmp3 - xdes_, 
 			prod( this->QtonR * id3, vtmp3 - xdes_ ) );
 		if( k<(this->h_-1) ){

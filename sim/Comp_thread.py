@@ -52,7 +52,9 @@ class CompThreadCom(SocketCom):
             msg += "\n"
         for (name, vector) in [("x", self.x), ("dx", self.dx),
                                 ("ddx", self.ddx), ("xdes", self.xdes),
-                                    ("guess", self.guess), ("increments", self.increments)]:
+                                    ("guess", self.guess), ("increments", self.increments),
+                                    ("xc", self.xc), ("dxc", self.dxc),
+                                    ("ddxc", self.ddxc)]:
             msg += name
             msg += " {0}".format(vector.shape[0])
             for lin in range(0,vector.shape[0]):
@@ -91,10 +93,13 @@ class CompThreadCom(SocketCom):
         self.xdes = copy.copy( xdes )
         self.Pref = copy.copy( Pref )
 
-    def set_current_kinematics(self, x, dx, ddx ):
+    def set_current_kinematics(self, x, dx, ddx, xc, dxc, ddxc ):
         self.x = copy.copy( x )
         self.dx = copy.copy( dx )
         self.ddx = copy.copy( ddx )
+        self.xc = copy.copy( xc )
+        self.dxc = copy.copy( dxc )
+        self.ddxc = copy.copy( ddxc )
 
     def set_disturbance(self, FDIS ):
         self.FDIS = copy.copy( FDIS )
