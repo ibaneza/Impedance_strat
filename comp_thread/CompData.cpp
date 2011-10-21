@@ -17,7 +17,6 @@ void Comp::update(double epsilon, int maxiters) {
 	--------*/ 
 	std::cout<<"is computing..."<<std::endl;
 	this->simplexe_.reset( this->guess_, this->increments_, this->ch_ );
-	this->simplexe_.display_ = Display( "test" );
 	this->results_ = this->simplexe_.minimize( epsilon, maxiters );
 	std::cout<<"has computed."<<std::endl;
 	std::cout<<std::endl;
@@ -37,6 +36,7 @@ std::string Comp::get_message() {
 	oss << this->results_.size()<<"\n";
 	for( unsigned int i=0; i<this->results_.size(); i++ )
 		oss <<results_(i)<<"\n";
+	std::cout<<"C++ SENDING MESSAGE "<<this->results_.size()<<std::endl;
     return oss.str();
 }
 
@@ -57,6 +57,7 @@ int Comp::analyse_message(std::string msg) {
 										ch_.dt_>>
 										ch_.h_>>
 										ch_.mode_>>ch_.kpinit_; count+=7;}
+		else if (s=="Name"){			in>>this->simplexe_.display_.win_name_; this->simplexe_.display_.init();}
 		else if (s=="Jacobian"){		fill_matrix( ch_.J_			, in );count++;}
 		else if (s=="dJacobian"){		fill_matrix( ch_.dJ_		, in );count++;}
 		else if (s=="JacobianI"){		fill_matrix( ch_.Ji_		, in );count++;}

@@ -168,7 +168,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		if( ipct > ipct_p ) {
 			std::cout<<"\t| "<<10*ipct<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
 			this->simplex_( this->lowest_ ).func();
-			this->display_.showPreview( this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
+			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
 		}
 		ipct_p = ipct;
 	}

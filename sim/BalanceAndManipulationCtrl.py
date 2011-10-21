@@ -77,6 +77,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
         self._Kd = Kd
 
         self.comp_thread = comp_thread
+        self.comp_thread.set_name( self.force_name )
 
     def init(self, world, LQP_ctrl, tasks, events, bodies):
         self.comp_thread.init( world, 0.0 )
@@ -234,7 +235,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 boundaries[2*self.h] = 20. * 1. / reduc
 
 
-
+                print "\tStep 1"
                 self.Kpinit = self.values[2*self.h]
                 print 'Optimizing Input with Kp = ', self.Kpinit
                 self.comp_thread.set_mode( 3 )
@@ -254,6 +255,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
                 self.comp_thread.set_mode( 2 )
                 self.comp_thread.set_simplex_parameters( self.values, reduc * boundaries )
+                print "\tStep 2"
                 self.values = self.comp_thread.update( self.dt )
 
                 print ddV_com[0]

@@ -39,6 +39,7 @@ class CompThreadCom(SocketCom):
     def edit_message(self, dt, prec=4):
         # Send information
         msg = ""
+        msg += "Name " + self.name + "\n"
         msg += "Constants {0} {1} {2} {3} {4} {5} {6}\n".format(self.M,self.zc,self.g,self.dt,self.h, self.mode, self.kpinit)
         for (name, matrix) in [("Jacobian",self.J), ("dJacobian",self.dJ),
                                 ("JacobianI",self.Ji), ("dJJi", self.dJJi),
@@ -113,6 +114,9 @@ class CompThreadCom(SocketCom):
 
     def set_kpinit( self, kpinit ):
         self.kpinit = kpinit
+
+    def set_name( self, name = "NoName" ):
+        self.name = name
 
     def finish(self):
         SocketCom.finish(self)
