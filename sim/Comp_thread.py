@@ -44,7 +44,7 @@ class CompThreadCom(SocketCom):
         for (name, matrix) in [("Jacobian",self.J), ("dJacobian",self.dJ),
                                 ("JacobianI",self.Ji), ("dJJi", self.dJJi),
                                     ("JtiHJi",self.JtiHJi), ("Pref",self.Pref),
-                                        ("FDIS",self.FDIS)]:
+                                        ("FDIS",self.FDIS), ("Mass",self.Hi)]:
             msg += name
             msg += " {0} {1}".format(matrix.shape[0],matrix.shape[1])
             for lin in range(0,matrix.shape[0]):
@@ -65,12 +65,12 @@ class CompThreadCom(SocketCom):
 
     def msg_manager(self, msg):
         if self.verbose:
-            print "read message..."
+            pass
         if msg == "COMP_THREAD_ERROR":
             print "Computing thread returned with error"
             return
         smsg = msg.split("\n")
-        print "Size of message read in ARBORIS/PYTHON = ", int(smsg[0])
+        print "ARBORIS/PYTHON READING ", int(smsg[0])
         result = zeros(int(smsg[0]))
         for w in range(1,int(smsg[0])+1):
             result[w-1] = (float(smsg[w]))
@@ -83,7 +83,8 @@ class CompThreadCom(SocketCom):
         self.dt = dt
         self.h = h
 
-    def set_matrices(self, J, dJ, Ji, dJJi, JtiHJi ):
+    def set_matrices(self, Hi, J, dJ, Ji, dJJi, JtiHJi ):
+        self.Hi = Hi
         self.J = copy.copy( J )
         self.dJ = copy.copy( dJ )
         self.Ji = copy.copy( Ji )

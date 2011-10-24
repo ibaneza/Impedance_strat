@@ -77,15 +77,17 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
         self._Kd = Kd
 
         self.comp_thread = comp_thread
-        self.comp_thread.set_name( self.force_name )
+        if self.comp_thread is not None:
+            self.comp_thread.set_name( self.force_name )
 
     def init(self, world, LQP_ctrl, tasks, events, bodies):
-        self.comp_thread.init( world, 0.0 )
+        if self.comp_thread is not None:
+            self.comp_thread.init( world, 0.0 )
 
     ##A# New stuff
         self.count = 0
         ##A# Init factory variables
-        self.prevJ = self.frame.jacobian[0:3,:] - self.root_frame.jacobian[0:3,:]
+        self.prevJ = self.frame.jacobian[3:6,:] - self.root_frame.jacobian[3:6,:]
         self.prevdQ = self.world.gvel
         self.iOutput = zeros((3,))
         self.prevdx = zeros((3,))
@@ -163,7 +165,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 self.prevdQ = dQ
 
                 ##A# Jacobian, Jacobian's derivative, transpose and pseudoinverse
-                J = self.frame.jacobian[0:3,:]  - self.root_frame.jacobian[0:3,:]
+                J = self.frame.jacobian[3:6,:]  - self.root_frame.jacobian[3:6,:]
                 self.dJ = (J - self.prevJ)/dt
                 self.prevJ = J
                 self.Jt = transpose(J)
@@ -174,6 +176,8 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
                 JHiJt = dot( J, dot(inv(H), self.Jt))
                 self.JtiHJi = inv( JHiJt )
+                self.JHiJt = JHiJt
+                #print self.JHiJt
 
                 for c in self.good_config:
                     c.enable()
@@ -216,11 +220,9 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 self.B = [self.dt**3/6, self.dt**2/2, self.dt]
                 if not self.screated:
                     self.values = 10.*ones(2*self.h+1) #(3*self.h)
+                    self.values[0:self.h] = -ddV_com[:,0]
+                    self.values[self.h:2*self.h] = -ddV_com[:,1]
                     self.values[2*self.h]=100. #:3*self.h] = 100.
-
-                    for i in range(self.h):
-                        self.values[i] = ddV_com[i][0]
-                        self.values[i+self.h] = ddV_com[i][1]
                     self.screated = True
                 boundaries = zeros(2*self.h+1) #3*self.h)
                 for (d,f) in [(0,self.h),(self.h,2*self.h)]: #,(2*self.h,3*self.h)]:
@@ -228,24 +230,24 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                     for i in range(self.h):
                         if abs(self.values[i]) > maxi:
                             maxi = abs(self.values[i])
-                    boundaries[d:f] = .5*maxi
+                    if maxi < 0.1:
+                        maxi = 0.1
+                    boundaries[d:f] = 1.*maxi
                 #boundaries[:] = 0.5*abs(self.values[:])
                 ##TO FORCE!!!
                 #boundaries = ones( 2*self.h + 1)
                 boundaries[2*self.h] = 20. * 1. / reduc
 
 
-                print "\tStep 1"
                 self.Kpinit = self.values[2*self.h]
-                print 'Optimizing Input with Kp = ', self.Kpinit
+                print '\tStep 1: Optimizing Input with Kp = ', self.Kpinit
                 self.comp_thread.set_mode( 3 )
                 self.comp_thread.set_kpinit( self.Kpinit )
 
                 FDIS = self.box_ctrl.ask_force()
-                print FDIS[0,:]
                 self.dJJi = dot( self.dJ,self.Ji )
                 self.comp_thread.set_constants( self.Ma, self.com_h, self.gravity, self.dt, self.h )
-                self.comp_thread.set_matrices( self.prevJ, self.dJ, self.Ji, self.dJJi, self.JtiHJi )
+                self.comp_thread.set_matrices( self.JHiJt, self.prevJ, self.dJ, self.Ji, self.dJJi, self.JtiHJi )
                 self.comp_thread.set_desired_kinematics( self.x_des, transpose(self.pref) )
                 self.comp_thread.set_current_kinematics( self.x, self.dx, self.ddx, self.xc, self.dxc, self.ddxc )
                 self.comp_thread.set_disturbance( FDIS )
@@ -255,13 +257,13 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
                 self.comp_thread.set_mode( 2 )
                 self.comp_thread.set_simplex_parameters( self.values, reduc * boundaries )
-                print "\tStep 2"
+                print "\tStep 2: Total optimization with pseudo-optimal Init."
                 self.values = self.comp_thread.update( self.dt )
 
-                print ddV_com[0]
+                #print ddV_com[0]
                 ddV_com[0][0] = self.values[0]
                 ddV_com[0][1] = self.values[self.h]
-                print ddV_com[0]
+                #print ddV_com[0]
                 self.task.ctrl.Kp = self.values[2*self.h]
                 self.task.ctrl.Kd = 2*sqrt(abs(self.task.ctrl.Kp))
 
@@ -275,4 +277,5 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
         self.input = ddV_com[0]
         #print zmp_ref[0,:]
         print self.task.ctrl.Kp, self.task.ctrl.Kd
+        #print ddV_com[0]
         return ddV_com[0]

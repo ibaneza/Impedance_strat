@@ -108,7 +108,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		double F2 = S / (this->numvars_ + 1. );
 		for( int vertex=0; vertex<this->numvars_+1; vertex++ )
 			S1 += pow( this->errors_(vertex) - F2, 2. );
-		double T = sqrt( S1 / this->numvars_ );
+		double T = sqrt( S1 )/this->numvars_;
 		CV = T;
 		if( T <= epsilon )	// We reached convergence, let's get outta here
 			break;			
@@ -166,8 +166,8 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		}
 		modf( 10*(double)iter/(double)maxiters, &ipct );
 		if( ipct > ipct_p ) {
-			std::cout<<"\t| "<<10*ipct<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
-			this->simplex_( this->lowest_ ).func();
+			std::cout<<"\t| "<<10*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
+			this->simplex_( this->lowest_ ).func(true);
 			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
 		}
 		ipct_p = ipct;
@@ -179,13 +179,15 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	if( iter < (maxiters-1) ) std::cout<<"\t u   u\n\t  \\o/ \n\t  _| CONVERGENCE!\n\t_|  \\_\n\t      |"<<std::endl;
 	else std::cout<<"\t  ____\n\t |    | \n\t o    | \n\t/|\\   | MAXI ITER EXIT!\n\t/ \\   | \n\t_____/|\\_"<<std::endl;
 	std::cout<<"\n ****************************** \n\n";
-	std::cout<<"\t\t|Simplex statistics on exit: Error = "<<this->errors_(this->lowest_)<<
-		", Iterations = "<<iter<<"/"<<maxiters<<std::endl;
-	std::cout<<"\t\t|\tContractions: "<<this->stats_(0)<<
-		" %\tExpansions: "<<this->stats_(1)<<
-		" %\tReflections: "<<this->stats_(2)<<" %"<<std::endl;
-	std::cout<<"\t\t|In "<<elapsed<<" s >> "<<elapsed/iter<<
-		" s per iteration >> Real time expansion x"<<(int) (elapsed / this->ch_.dt_)<<std::endl;
+	if( true ){
+		std::cout<<"\t\t|Simplex statistics on exit: Error = "<<this->errors_(this->lowest_)<<
+			", Iterations = "<<iter<<"/"<<maxiters<<std::endl;
+		std::cout<<"\t\t|\tContractions: "<<this->stats_(0)<<
+			" %\tExpansions: "<<this->stats_(1)<<
+			" %\tReflections: "<<this->stats_(2)<<" %"<<std::endl;
+		std::cout<<"\t\t|In "<<elapsed<<" s >> "<<elapsed/iter<<
+			" s per iteration >> Real time expansion x"<<(int) (elapsed / this->ch_.dt_)<<std::endl;
+	}
 	return this->simplex_(this->lowest_).get_data();
 }
 
@@ -203,7 +205,7 @@ void Simplex::contract_simplex(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > guess_data( this->numvars_ );
 	for( int param=0; param<this->numvars_; param++ )
 		guess_data(param) = this->kC_ * this->simplex_(this->highest_).get_data()(param)
-			+ (1. - this->kC_) * this->simplex_(this->numvars_ + 1).get_data()(param);
+		+ (1. - this->kC_) * this->simplex_(this->numvars_ + 1).get_data()(param);
 	this->guess_.set_data( guess_data );
 }
 
@@ -211,7 +213,7 @@ void Simplex::expand_simplex(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > guess_data( this->numvars_ );
 	for( int param=0; param<this->numvars_; param++ )
 		guess_data(param) = this->kE_ * this->guess_.get_data()(param) 
-			+ (1. - this->kE_) * this->simplex_(this->numvars_ + 1).get_data()(param);
+		+ (1. - this->kE_) * this->simplex_(this->numvars_ + 1).get_data()(param);
 	this->guess_.set_data( guess_data );
 }
 
@@ -219,7 +221,7 @@ void Simplex::reflect_simplex(){
 	ublas::vector< double, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > guess_data( this->numvars_ );
 	for( int param=0; param<this->numvars_; param++ )
 		guess_data(param) = this->kR_ * this->simplex_(this->highest_).get_data()(param)
-			+ (1. - this->kR_) * this->simplex_(this->numvars_ + 1).get_data()(param);
+		+ (1. - this->kR_) * this->simplex_(this->numvars_ + 1).get_data()(param);
 	this->guess_.set_data( guess_data );
 	this->simplex_(this->numvars_+2).set_data( guess_data ); //We need to store it, in case of acceptance
 }
@@ -231,7 +233,7 @@ void Simplex::multiple_contract_simplex(){
 			continue;
 		for( int param=0; param<this->numvars_; param++ )
 			data(param) = .5 * ( this->simplex_(vertex).get_data()(param) 
-				+ this->simplex_(this->lowest_).get_data()(param) );
+			+ this->simplex_(this->lowest_).get_data()(param) );
 		this->simplex_(vertex).set_data( data );
 	}
 	this->compute_error_at_vertices();

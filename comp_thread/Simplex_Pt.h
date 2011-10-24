@@ -28,7 +28,8 @@ struct Constants_holder{
 	int mode_;
 	ublas::vector< double > x_, dx_, ddx_;		// Manipulation task	current position, velocity, acceleration
 	ublas::vector< double > xc_, dxc_, ddxc_;	// Center of Mass		current position, velocity, acceleration
-	ublas::vector< double > xdes_;				// Manipulation task		desired position
+	ublas::vector< double > xdes_;				// Manipulation task	desired position
+	ublas::matrix< double > Mei_;				// Configuation space	Mass Matrix
 	ublas::matrix< double > J_, dJ_, Ji_;		// Some Jacobian		derivates
 	ublas::matrix< double > dJJi_, JtiHJi_;		// Some Jacobian		composites
 	ublas::matrix< double > Pref_;				// ZMP		position
@@ -60,6 +61,7 @@ public:
 	ublas::vector< double > xdes_;				// Manipulation task	desired position
 	ublas::matrix< double > Pref_;				// ZMP					reference position
 	ublas::matrix< double > FDIS_;				// Total Disturbance	force Horizon
+	ublas::matrix< double > Mei_;				// Configuation space	Mass Matrix
 	ublas::matrix< double > J_, dJ_, Ji_;		// Some Jacobian		derivates
 	ublas::matrix< double > dJJi_, JtiHJi_;		// Some Jacobian		composites
 	double M_, zc_, gravity_, dt_, h_;			//	Total mass, CoM altitude (assumed constant), 
@@ -93,13 +95,13 @@ public:
 	int set_desired_kinematics( const ublas::vector<double> &xdes, const ublas::matrix<double> &Pref ); 
 	int set_constants( double M, double zc, double gravity, double dt, double h );
 	int set_kpinit( double Kpinit );
-	int set_matrices( ublas::matrix< double > J, ublas::matrix< double > dJ, ublas::matrix< double > Ji, ublas::matrix< double > dJJi, ublas::matrix< double > JtiHJi );
+	int set_matrices( ublas::matrix< double> Mei, ublas::matrix< double > J, ublas::matrix< double > dJ, ublas::matrix< double > Ji, ublas::matrix< double > dJJi, ublas::matrix< double > JtiHJi );
 	int set_disturbance( const ublas::matrix< double > &fdis );
 	/* -------- Init -------- */
 	int init( Constants_holder ch, int dim );
 	int init_size( int dim );
 	void reset_all();
-	double func();
+	double func(bool bverb = false);
 	/* -------- Getters -------- */
 	ublas::vector< double > get_data(){ return this->data_; };
 };

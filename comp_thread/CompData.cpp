@@ -58,6 +58,7 @@ int Comp::analyse_message(std::string msg) {
 										ch_.h_>>
 										ch_.mode_>>ch_.kpinit_; count+=7;}
 		else if (s=="Name"){			in>>this->simplexe_.display_.win_name_; this->simplexe_.display_.init();}
+		else if (s=="Mass"){			fill_matrix( ch_.Mei_		, in );count++;}
 		else if (s=="Jacobian"){		fill_matrix( ch_.J_			, in );count++;}
 		else if (s=="dJacobian"){		fill_matrix( ch_.dJ_		, in );count++;}
 		else if (s=="JacobianI"){		fill_matrix( ch_.Ji_		, in );count++;}

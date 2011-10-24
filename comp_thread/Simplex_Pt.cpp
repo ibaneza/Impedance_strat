@@ -23,7 +23,7 @@ int Simplex_Pt::init( Constants_holder ch, int dim ){
 		std::cout<<4;return 0;}
 	if( !this->set_desired_kinematics( ch.xdes_, ch.Pref_ ) ){
 		std::cout<<5;return 0;}
-	if( !this->set_matrices( ch.J_, ch.dJ_, ch.Ji_, ch.dJJi_, ch.JtiHJi_ ) ){
+	if( !this->set_matrices( ch.Mei_, ch.J_, ch.dJ_, ch.Ji_, ch.dJJi_, ch.JtiHJi_ ) ){
 		std::cout<<6;return 0;}
 	if( !this->set_disturbance( ch.FDIS_ ) ){
 		std::cout<<7;return 0;}
@@ -158,12 +158,13 @@ int Simplex_Pt::set_kpinit( double Kpinit ){
 	return 1;
 }
 
-int Simplex_Pt::set_matrices( matrix< double > J, matrix< double > dJ, matrix< double > Ji, matrix< double > dJJi, matrix< double > JtiHJi ){
+int Simplex_Pt::set_matrices( matrix<double >Mei, matrix< double > J, matrix< double > dJ, matrix< double > Ji, matrix< double > dJJi, matrix< double > JtiHJi ){
 	/* --------
 	Fills some useful matrices
 	-------- */
 	if( dJ.size1() != dJJi.size1() || Ji.size2() != dJJi.size2() || Ji.size2() != JtiHJi.size2() )
 		return 0;
+	this->Mei_.resize( Mei.size1(), Mei.size2() );
 	this->J_.resize( J.size1(),J.size2() ); this->dJ_.resize( dJ.size1(),dJ.size2() ); this->Ji_.resize( Ji.size1(),Ji.size2() );
 	this->dJJi_.resize( dJJi.size1(),dJJi.size2() ); this->JtiHJi_.resize( JtiHJi.size1(),JtiHJi.size2() );
 	for( unsigned int i=0; i<J.size1(); i++ ){
@@ -181,6 +182,11 @@ int Simplex_Pt::set_matrices( matrix< double > J, matrix< double > dJ, matrix< d
 	for( unsigned int i=0; i<JtiHJi.size1(); i++ ){
 		for( unsigned int j=0; j<JtiHJi.size2(); j++ ){
 			this->JtiHJi_(i,j) = JtiHJi(i,j);
+		}
+	}
+	for( unsigned int i=0; i<Mei.size1(); i++ ){
+		for( unsigned int j=0; j<Mei.size2(); j++ ){
+			this->Mei_(i,j) = Mei(i,j);
 		}
 	}
 
@@ -212,7 +218,7 @@ void Simplex_Pt::reset_all(){
 	P_ = zero_matrix< double > ( P_.size1(), P_.size2() ); 
 }
 
-double Simplex_Pt::func(){
+double Simplex_Pt::func(bool bverb){
 	/* --------
 	Objective function to be minimized
 	-------- */
@@ -261,10 +267,9 @@ double Simplex_Pt::func(){
 	vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
 	vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
 	double dtmp;
-	vector< double, bounded_array< double, 3 > > ddx_cmd	( 3 );
+	vector< double, bounded_array< double, 3 > > ddx_cmd, dx_cmd	( 3 );
 	vector< double, bounded_array< double, 3 > > Fk			( 3 );
 	matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > Ke, Ce;
-
 	/* -------- Initialization of Effector position -------- */
 	X_(0,0) = this->x_(0); X_(1,0) = this->dx_(0); X_(2,0) = this->ddx_(0);
 	Y_(0,0) = this->x_(1); Y_(1,0) = this->dx_(1); Y_(2,0) = this->ddx_(1);
@@ -272,14 +277,16 @@ double Simplex_Pt::func(){
 	/* -------- Initialization of CoM position -------- */
 	Xc_(0,0) = this->xc_(0); Xc_(1,0) = this->dxc_(0); Xc_(2,0) = this->ddxc_(0);
 	Yc_(0,0) = this->xc_(1); Yc_(1,0) = this->dxc_(1); Yc_(2,0) = this->ddxc_(1);
-
+	dx_cmd = zero_vector< double > (3);
 	for( int k=0; k<this->h_; k++ ){
 		double uxk, uyk, Kpk, Kdk;
 		uxk = Ux_( k ); uyk = Uy_( k );
 		Kpk = Kp_( k ); Kdk = Kd_( k );
-		evalf += .5e-1 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
+		evalf += 1.e-3 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
+		evalf += 1.e6 * pow( fabs(Kpk-10.) - (Kpk-10.), 2.);
 		Ke = Kpk * this->JtiHJi_;
 		Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
+		//std::cout<<Mei_<<std::endl;
 		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
 			Me ( this->JtiHJi_ );
 		/* -------- Computing expected input acceleration -------- */
@@ -291,6 +298,13 @@ double Simplex_Pt::func(){
 		ddx_cmd = -Kpk * vtmp3;
 		vtmp3(0) = X_(1,k); vtmp3(1) = Y_(1,k); vtmp3(2) = Z_(1,k);
 		ddx_cmd += -Kdk * vtmp3;
+		vtmp3(0) = X_(2,k); vtmp3(1) = Y_(2,k); vtmp3(2) = Z_(2,k);
+		ddx_cmd += -1. * vtmp3;
+		if(bverb && false){
+			std::cout<<"Mei = "<<Mei_<<std::endl;
+			//std::cout<<"Xk = "<<xdes_<<std::endl;
+		}
+		dx_cmd += dt_*ddx_cmd;
 		/* -------- Computing force acting on CoM -------- */
 		vtmp3(0) = X_(1,k) - Xc_(1,k);
 		vtmp3(1) = Y_(1,k) - Yc_(1,k);
@@ -302,7 +316,9 @@ double Simplex_Pt::func(){
 			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
 		}
 		Fk += prod( Ke, vtmp3 );
-		Fk += -column( this->FDIS_, k );
+		// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
+		//Fk += column( this->FDIS_, k ); // Sure about that?
+		// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 		/* -------- Computing ZMP position -------- */
 		dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
 		vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
@@ -328,21 +344,42 @@ double Simplex_Pt::func(){
 			/* -------- Integrating Effector position -------- */
 			X_(0,k+1) = X_(0,k) + dt_*X_(1,k) + dt_*dt_/2.*X_(2,k);
 			X_(1,k+1) = X_(1,k) + dt_*X_(2,k);
-			X_(2,k+1) = ddx_cmd(0);
+			//X_(2,k+1) = ddx_cmd(0);
+			//
 			Y_(0,k+1) = Y_(0,k) + dt_*Y_(1,k) + dt_*dt_/2.*Y_(2,k);
 			Y_(1,k+1) = Y_(1,k) + dt_*Y_(2,k);
-			Y_(2,k+1) = ddx_cmd(1);
+			//Y_(2,k+1) = ddx_cmd(1);
+			//
 			Z_(0,k+1) = Z_(0,k) + dt_*Z_(1,k) + dt_*dt_/2.*Z_(2,k);
 			Z_(1,k+1) = Z_(1,k) + dt_*Z_(2,k);
-			Z_(2,k+1) = ddx_cmd(2);
+			//Z_(2,k+1) = ddx_cmd(2);
+			//
+			X_(2,k+1) = 0;	Y_(2,k+1) = 0;	Z_(2,k+1) = 0;
+			X_(2,k+1) = -Kpk*X_(0,k) + (-dt_*Kpk-Kdk)*X_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*X_(1,k) + Kpk*xdes_(0);
+			Y_(2,k+1) = -Kpk*Y_(0,k) + (-dt_*Kpk-Kdk)*Y_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Y_(1,k) + Kpk*xdes_(1);
+			Z_(2,k+1) = -Kpk*Z_(0,k) + (-dt_*Kpk-Kdk)*Z_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Z_(1,k) + Kpk*xdes_(2);
+			ublas::matrix < double > tmp;
+			tmp = prod( dJ_, Ji_ );
+			vtmp3(0) = X_(1,k+1); vtmp3(1) = Y_(1,k+1); vtmp3(2) = Z_(1,k+1);
+			vtmp3 = prod( Mei_, column(FDIS_,k+1)) 
+				+ 1.*prod(tmp,dx_cmd)
+				- 1.*prod(tmp, vtmp3);
+			X_(2,k+1) += vtmp3(0); Y_(2,k+1) += vtmp3(1); Z_(2,k+1) += vtmp3(2);
 			/* -------- Adding Input change to objective -------- */
 			if( Ux_(k+1)!=0. ) vtmp2(0) = ( Ux_(k+1)-Ux_(k) ) / Ux_(k+1);
 			else vtmp2(0) = 0.;
 			if( Uy_(k+1)!=0. ) vtmp2(1) = ( Uy_(k+1)-Uy_(k) ) / Uy_(k+1);
 			else vtmp2(1) = 0.;
 			evalf += inner_prod( vtmp2, vtmp2 );
+			if( bverb ){}
+				//std::cout<<evalf<<std::endl;
 		}
 	}
+	if( evalf != evalf )
+		evalf = 1.e12;
 	return evalf;
 }
 
