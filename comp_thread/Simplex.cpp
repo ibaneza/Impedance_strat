@@ -27,6 +27,7 @@ void Simplex::reset( ublas::vector< double > guess, ublas::vector< double > incr
 	/*--------
 	Initializes Simplex
 	--------*/
+	std::cout<<std::endl<<"SIMPLEX RESETTING"<<std::endl;
 	this->_reset();
 	this->ch_ = ch;
 	this->numvars_ = guess.size();
@@ -89,6 +90,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		this->highest_ = 0;
 		this->lowest_ = 0;
 		for( int vertex=0; vertex<this->numvars_+1; vertex++ ){
+			//this->display_.showPreview( true, this->simplex_(vertex).Xc_, this->simplex_(vertex).Yc_, this->simplex_(vertex).zc_, this->simplex_(vertex).X_, this->simplex_(vertex).Y_, this->simplex_(vertex).Z_, this->simplex_(vertex).P_, this->simplex_(vertex).Pref_, this->simplex_(vertex).xdes_, this->simplex_(vertex).FDIS_ );
 			if( this->errors_(vertex) > this->errors_(this->highest_) )
 				this->highest_ = vertex;
 			if( this->errors_(vertex) < this->errors_(this->lowest_) )
@@ -164,11 +166,11 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->multiple_contract_simplex();
 			}
 		}
-		modf( 10*(double)iter/(double)maxiters, &ipct );
+		modf( 100*(double)iter/(double)maxiters, &ipct );
 		if( ipct > ipct_p ) {
-			std::cout<<"\t| "<<10*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
+			std::cout<<"\t| "<<1*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
 			this->simplex_( this->lowest_ ).func(true);
-			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
+			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).nPref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
 		}
 		ipct_p = ipct;
 	}
@@ -176,7 +178,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	elapsed = ((double)end - start) / CLOCKS_PER_SEC;
 	for( int i=0; i<3; i++ ) this->stats_(i) = 100. * this->stats_(i) / iter;
 	std::cout<<"\n ****************************** \n\n";
-	if( iter < (maxiters-1) ) std::cout<<"\t u   u\n\t  \\o/ \n\t  _| CONVERGENCE!\n\t_|  \\_\n\t      |"<<std::endl;
+	if( iter < (maxiters-1) ) std::cout<<"\t u   u\n\t  \\o/ \n\t  _| CONVERGENCE! "<<CV<<"\n\t_|  \\_\n\t      |"<<std::endl;
 	else std::cout<<"\t  ____\n\t |    | \n\t o    | \n\t/|\\   | MAXI ITER EXIT!\n\t/ \\   | \n\t_____/|\\_"<<std::endl;
 	std::cout<<"\n ****************************** \n\n";
 	if( true ){
@@ -188,6 +190,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		std::cout<<"\t\t|In "<<elapsed<<" s >> "<<elapsed/iter<<
 			" s per iteration >> Real time expansion x"<<(int) (elapsed / this->ch_.dt_)<<std::endl;
 	}
+	this->simplex_( this->lowest_ ).func(true);
 	return this->simplex_(this->lowest_).get_data();
 }
 

@@ -47,6 +47,13 @@ public:
 	Simplex_Pt( int mode=SIMPLEX_MODE_U_KPCONST );
 	~Simplex_Pt();
 
+	ublas::matrix< double> build_Effort();
+	ublas::vector< ublas::matrix< double > > build_Px(ublas::matrix< double > F);
+	ublas::vector< ublas::matrix< double > > build_Pu(ublas::matrix< double > F);
+	ublas::matrix< double > build_newPref(ublas::matrix< double > F);
+	void integrate_CoM();
+	double compute_error(ublas::matrix< double > F);
+
 public:
 	/* -------- Point-related stuff ---------- */
 	ublas::vector< double > data_;	// Contains point position in parameters space
@@ -59,7 +66,7 @@ public:
 	ublas::vector< double > x_, dx_, ddx_;		// Manipulation task	current position, velocity, acceleration
 	ublas::vector< double > xc_, dxc_, ddxc_;	// Center of Mass		current position, velocity, acceleration
 	ublas::vector< double > xdes_;				// Manipulation task	desired position
-	ublas::matrix< double > Pref_;				// ZMP					reference position
+	ublas::matrix< double > Pref_, nPref_;		// ZMP					reference position
 	ublas::matrix< double > FDIS_;				// Total Disturbance	force Horizon
 	ublas::matrix< double > Mei_;				// Configuation space	Mass Matrix
 	ublas::matrix< double > J_, dJ_, Ji_;		// Some Jacobian		derivates

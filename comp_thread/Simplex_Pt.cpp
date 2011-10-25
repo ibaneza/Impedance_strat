@@ -45,16 +45,19 @@ int Simplex_Pt::init_size( int dim ){
 	int dimension = (int) this->h_;
 	switch( this->mode_ ){
 		case SIMPLEX_MODE_U_KP_KD:
-			if( this->dimension_ != (2+1+1)*this->h_ ) return 0;
+			if( this->dimension_ != (2+1+1)*this->h_ )	return 0;
 			break;
 		case SIMPLEX_MODE_U_KP:
-			if( this->dimension_ != (2+1)*this->h_ ) return 0;
+			if( this->dimension_ != (2+1)*this->h_ )	return 0;
 			break;
 		case SIMPLEX_MODE_U_KPCONST:
-			if( this->dimension_ != (2*this->h_+1) ) return 0;
+			if( this->dimension_ != (2*this->h_+1) )	return 0;
 			break;
 		case SIMPLEX_MODE_U:
-			if( this->dimension_ != (2*this->h_) ) return 0;
+			if( this->dimension_ != (2*this->h_) )		return 0;
+			break;
+		case SIMPLEX_MODE_KP:
+			if( this->dimension_ != this->h_ )			return 0;
 			break;
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
@@ -223,7 +226,7 @@ double Simplex_Pt::func(bool bverb){
 	Objective function to be minimized
 	-------- */
 	double evalf = 0.;
-	this->reset_all();
+	//this->reset_all();
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
 	// TODO: fill vectors and matrices with this->data_ according to this->mode_
 	switch( this->mode_ ){
@@ -240,7 +243,7 @@ double Simplex_Pt::func(bool bverb){
 				this->Ux_(k) = this->data_(k);
 				this->Uy_(k) = this->data_((int)this->h_+k);
 				this->Kp_(k) = this->data_(2*(int)this->h_+k);
-				this->Kd_(k) = sqrt( this->Kp_(k) );
+				this->Kd_(k) = sqrt( fabs(this->Kp_(k)) );
 			}
 			break;
 		case SIMPLEX_MODE_U_KPCONST:
@@ -248,7 +251,7 @@ double Simplex_Pt::func(bool bverb){
 				this->Ux_(k) = this->data_(k);
 				this->Uy_(k) = this->data_((int)this->h_+k);
 				this->Kp_(k) = this->data_(2*(int)this->h_);
-				this->Kd_(k) = sqrt( this->Kp_(k) );
+				this->Kd_(k) = sqrt( fabs(this->Kp_(k)) );
 			}
 			break;
 		case SIMPLEX_MODE_U:
@@ -256,130 +259,175 @@ double Simplex_Pt::func(bool bverb){
 				this->Ux_(k) = this->data_(k);
 				this->Uy_(k) = this->data_((int)this->h_+k);
 				this->Kp_(k) = this->Kpinit_;
-				this->Kd_(k) = sqrt( this->Kp_(k) );
+				this->Kd_(k) = sqrt( fabs(this->Kp_(k)) );
 			}
+			break;
+		case SIMPLEX_MODE_KP:
+			for( int k=0; k<this->h_; k++ ){
+				this->Kp_(k) = this->data_(k);
+				this->Kd_(k) = sqrt( fabs(this->Kp_(k)) );
+			}
+			//std::cout<<Kp_<<std::endl;
 			break;
 			
 	}
 	// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
-	identity_matrix< double > id3							( 3 );
-	identity_matrix< double > id2							( 2 );
-	vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
-	vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
-	double dtmp;
-	vector< double, bounded_array< double, 3 > > ddx_cmd, dx_cmd	( 3 );
-	vector< double, bounded_array< double, 3 > > Fk			( 3 );
-	matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > Ke, Ce;
-	/* -------- Initialization of Effector position -------- */
-	X_(0,0) = this->x_(0); X_(1,0) = this->dx_(0); X_(2,0) = this->ddx_(0);
-	Y_(0,0) = this->x_(1); Y_(1,0) = this->dx_(1); Y_(2,0) = this->ddx_(1);
-	Z_(0,0) = this->x_(2); Z_(1,0) = this->dx_(2); Z_(2,0) = this->ddx_(2);
-	/* -------- Initialization of CoM position -------- */
-	Xc_(0,0) = this->xc_(0); Xc_(1,0) = this->dxc_(0); Xc_(2,0) = this->ddxc_(0);
-	Yc_(0,0) = this->xc_(1); Yc_(1,0) = this->dxc_(1); Yc_(2,0) = this->ddxc_(1);
-	dx_cmd = zero_vector< double > (3);
-	for( int k=0; k<this->h_; k++ ){
-		double uxk, uyk, Kpk, Kdk;
-		uxk = Ux_( k ); uyk = Uy_( k );
-		Kpk = Kp_( k ); Kdk = Kd_( k );
-		evalf += 1.e-3 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
-		evalf += 1.e6 * pow( fabs(Kpk-10.) - (Kpk-10.), 2.);
-		Ke = Kpk * this->JtiHJi_;
-		Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
-		//std::cout<<Mei_<<std::endl;
-		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
-			Me ( this->JtiHJi_ );
-		/* -------- Computing expected input acceleration -------- */
-		for( int i=0; i<3; i++ ){
-			if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
-			else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
-			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
-		}
-		ddx_cmd = -Kpk * vtmp3;
-		vtmp3(0) = X_(1,k); vtmp3(1) = Y_(1,k); vtmp3(2) = Z_(1,k);
-		ddx_cmd += -Kdk * vtmp3;
-		vtmp3(0) = X_(2,k); vtmp3(1) = Y_(2,k); vtmp3(2) = Z_(2,k);
-		ddx_cmd += -1. * vtmp3;
-		if(bverb && false){
-			std::cout<<"Mei = "<<Mei_<<std::endl;
-			//std::cout<<"Xk = "<<xdes_<<std::endl;
-		}
-		dx_cmd += dt_*ddx_cmd;
-		/* -------- Computing force acting on CoM -------- */
-		vtmp3(0) = X_(1,k) - Xc_(1,k);
-		vtmp3(1) = Y_(1,k) - Yc_(1,k);
-		vtmp3(2) = Z_(1,k) - 0.; // No vertical CoM velocity assumed
-		Fk = prod( Ce, vtmp3 );
-		for( int i=0; i<3; i++ ){
-			if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
-			else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
-			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
-		}
-		Fk += prod( Ke, vtmp3 );
-		// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
-		//Fk += column( this->FDIS_, k ); // Sure about that?
-		// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
-		/* -------- Computing ZMP position -------- */
-		dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
-		vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
-		for( int i=0; i<2; i++ ){
-			if( i==0 )		P_(i,k) = inner_prod( vtmp3, column( Xc_, k ) ) + dtmp * Fk(i);
-			else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
-		}
-		/* -------- Adding ZMP tracking error to objective -------- */
-		evalf += 1. / pow(norm_2( column( Pref_,k ) ),2 ) 
-			* inner_prod( column( P_,k ) - column( Pref_,k ), 
-			prod( this->QeonR * id2, column( P_,k ) - column( Pref_,k ) ) );
-		/* -------- Adding Manipulation tracking error to objective -------- */
-		vtmp3(0) = X_(0,k); vtmp3(1) = Y_(0,k); vtmp3(2) = Z_(0,k);
-		evalf += 1. / pow( norm_2( xdes_ ) ,2 )
-			* inner_prod( vtmp3 - xdes_, 
-			prod( this->QtonR * id3, vtmp3 - xdes_ ) );
-		if( k<(this->h_-1) ){
-			/* -------- Integrating CoM position -------- */
-			vtmp3 = prod( A_, column( Xc_,k ) ) + uxk * B_;
-			for( int i=0; i<3; i++ ) Xc_( i,k+1 ) = vtmp3(i);
-			vtmp3 = prod( A_, column( Yc_,k ) ) + uyk * B_;
-			for( int i=0; i<3; i++ ) Yc_( i,k+1 ) = vtmp3(i);
-			/* -------- Integrating Effector position -------- */
-			X_(0,k+1) = X_(0,k) + dt_*X_(1,k) + dt_*dt_/2.*X_(2,k);
-			X_(1,k+1) = X_(1,k) + dt_*X_(2,k);
-			//X_(2,k+1) = ddx_cmd(0);
-			//
-			Y_(0,k+1) = Y_(0,k) + dt_*Y_(1,k) + dt_*dt_/2.*Y_(2,k);
-			Y_(1,k+1) = Y_(1,k) + dt_*Y_(2,k);
-			//Y_(2,k+1) = ddx_cmd(1);
-			//
-			Z_(0,k+1) = Z_(0,k) + dt_*Z_(1,k) + dt_*dt_/2.*Z_(2,k);
-			Z_(1,k+1) = Z_(1,k) + dt_*Z_(2,k);
-			//Z_(2,k+1) = ddx_cmd(2);
-			//
-			X_(2,k+1) = 0;	Y_(2,k+1) = 0;	Z_(2,k+1) = 0;
-			X_(2,k+1) = -Kpk*X_(0,k) + (-dt_*Kpk-Kdk)*X_(1,k) 
-				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*X_(1,k) + Kpk*xdes_(0);
-			Y_(2,k+1) = -Kpk*Y_(0,k) + (-dt_*Kpk-Kdk)*Y_(1,k) 
-				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Y_(1,k) + Kpk*xdes_(1);
-			Z_(2,k+1) = -Kpk*Z_(0,k) + (-dt_*Kpk-Kdk)*Z_(1,k) 
-				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Z_(1,k) + Kpk*xdes_(2);
-			ublas::matrix < double > tmp;
-			tmp = prod( dJ_, Ji_ );
-			vtmp3(0) = X_(1,k+1); vtmp3(1) = Y_(1,k+1); vtmp3(2) = Z_(1,k+1);
-			vtmp3 = prod( Mei_, column(FDIS_,k+1)) 
-				+ 1.*prod(tmp,dx_cmd)
-				- 1.*prod(tmp, vtmp3);
-			X_(2,k+1) += vtmp3(0); Y_(2,k+1) += vtmp3(1); Z_(2,k+1) += vtmp3(2);
-			/* -------- Adding Input change to objective -------- */
-			if( Ux_(k+1)!=0. ) vtmp2(0) = ( Ux_(k+1)-Ux_(k) ) / Ux_(k+1);
-			else vtmp2(0) = 0.;
-			if( Uy_(k+1)!=0. ) vtmp2(1) = ( Uy_(k+1)-Uy_(k) ) / Uy_(k+1);
-			else vtmp2(1) = 0.;
-			evalf += inner_prod( vtmp2, vtmp2 );
-			if( bverb ){}
+	if( this->mode_ != SIMPLEX_MODE_KP ){
+		identity_matrix< double > id3							( 3 );
+		identity_matrix< double > id2							( 2 );
+		vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
+		vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
+		double dtmp;
+		vector< double, bounded_array< double, 3 > > ddx_cmd, dx_cmd	( 3 );
+		vector< double, bounded_array< double, 3 > > Fk			( 3 );
+		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > Ke, Ce;
+		/* -------- Initialization of Effector position -------- */
+		X_(0,0) = this->x_(0); X_(1,0) = this->dx_(0); X_(2,0) = this->ddx_(0);
+		Y_(0,0) = this->x_(1); Y_(1,0) = this->dx_(1); Y_(2,0) = this->ddx_(1);
+		Z_(0,0) = this->x_(2); Z_(1,0) = this->dx_(2); Z_(2,0) = this->ddx_(2);
+		/* -------- Initialization of CoM position -------- */
+		Xc_(0,0) = this->xc_(0); Xc_(1,0) = this->dxc_(0); Xc_(2,0) = this->ddxc_(0);
+		Yc_(0,0) = this->xc_(1); Yc_(1,0) = this->dxc_(1); Yc_(2,0) = this->ddxc_(1);
+		dx_cmd = zero_vector< double > (3);
+		for( int k=0; k<this->h_; k++ ){
+			double uxk, uyk, Kpk, Kdk;
+			uxk = Ux_( k ); uyk = Uy_( k );
+			Kpk = Kp_( k ); Kdk = Kd_( k );
+			evalf += 1.e-3 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
+			evalf += 1.e6 * pow( fabs(Kpk-10.) - (Kpk-10.), 2.);
+			Ke = Kpk * this->JtiHJi_;
+			Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
+			//std::cout<<Mei_<<std::endl;
+			matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
+				Me ( this->JtiHJi_ );
+			/* -------- Computing expected input acceleration -------- */
+			for( int i=0; i<3; i++ ){
+				if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
+				else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
+				else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
+			}
+			ddx_cmd = -Kpk * vtmp3;
+			vtmp3(0) = X_(1,k); vtmp3(1) = Y_(1,k); vtmp3(2) = Z_(1,k);
+			ddx_cmd += -Kdk * vtmp3;
+			vtmp3(0) = X_(2,k); vtmp3(1) = Y_(2,k); vtmp3(2) = Z_(2,k);
+			ddx_cmd += -1. * vtmp3;
+			if(bverb && false){
+				std::cout<<"Mei = "<<Mei_<<std::endl;
+				//std::cout<<"Xk = "<<xdes_<<std::endl;
+			}
+			dx_cmd += dt_*ddx_cmd;
+			/* -------- Computing force acting on CoM -------- */
+			vtmp3(0) = X_(1,k);// - Xc_(1,k);
+			vtmp3(1) = Y_(1,k);// - Yc_(1,k);
+			vtmp3(2) = Z_(1,k) - 0.; // No vertical CoM velocity assumed
+			Fk = prod( Ce, vtmp3 );
+			for( int i=0; i<3; i++ ){
+				if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
+				else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
+				else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
+			}
+			Fk += prod( Ke, vtmp3 );
+			// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
+			//Fk += column( this->FDIS_, k ); // Sure about that?
+			// /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ 
+			/* -------- Computing ZMP position -------- */
+			dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
+			vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
+			for( int i=0; i<2; i++ ){
+				if( i==0 )		P_(i,k) = inner_prod( vtmp3, column( Xc_, k ) ) + dtmp * Fk(i);
+				else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
+			}
+			/* -------- Adding ZMP tracking error to objective -------- */
+			evalf += 1. / pow(norm_2( column( Pref_,k ) ),2 ) 
+				* inner_prod( column( P_,k ) - column( Pref_,k ), 
+				prod( this->QeonR * id2, column( P_,k ) - column( Pref_,k ) ) );
+			/* -------- Adding Manipulation tracking error to objective -------- */
+			vtmp3(0) = X_(0,k); vtmp3(1) = Y_(0,k); vtmp3(2) = Z_(0,k);
+			evalf += 1. / pow( norm_2( xdes_ ) ,2 )
+				* inner_prod( vtmp3 - xdes_, 
+				prod( this->QtonR * id3, vtmp3 - xdes_ ) );
+			if( k<(this->h_-1) ){
+				/* -------- Integrating CoM position -------- */
+				vtmp3 = prod( A_, column( Xc_,k ) ) + uxk * B_;
+				for( int i=0; i<3; i++ ) Xc_( i,k+1 ) = vtmp3(i);
+				vtmp3 = prod( A_, column( Yc_,k ) ) + uyk * B_;
+				for( int i=0; i<3; i++ ) Yc_( i,k+1 ) = vtmp3(i);
+				/* -------- Integrating Effector position -------- */
+				X_(0,k+1) = X_(0,k) + dt_*X_(1,k) + dt_*dt_/2.*X_(2,k);
+				X_(1,k+1) = X_(1,k) + dt_*X_(2,k);
+				//X_(2,k+1) = ddx_cmd(0);
+				//
+				Y_(0,k+1) = Y_(0,k) + dt_*Y_(1,k) + dt_*dt_/2.*Y_(2,k);
+				Y_(1,k+1) = Y_(1,k) + dt_*Y_(2,k);
+				//Y_(2,k+1) = ddx_cmd(1);
+				//
+				Z_(0,k+1) = Z_(0,k) + dt_*Z_(1,k) + dt_*dt_/2.*Z_(2,k);
+				Z_(1,k+1) = Z_(1,k) + dt_*Z_(2,k);
+				//Z_(2,k+1) = ddx_cmd(2);
+				//
+				X_(2,k+1) = 0;	Y_(2,k+1) = 0;	Z_(2,k+1) = 0;
+				X_(2,k+1) = -Kpk*X_(0,k) + (-dt_*Kpk-Kdk)*X_(1,k) 
+					+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*X_(1,k) + Kpk*xdes_(0);
+				Y_(2,k+1) = -Kpk*Y_(0,k) + (-dt_*Kpk-Kdk)*Y_(1,k) 
+					+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Y_(1,k) + Kpk*xdes_(1);
+				Z_(2,k+1) = -Kpk*Z_(0,k) + (-dt_*Kpk-Kdk)*Z_(1,k) 
+					+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Z_(1,k) + Kpk*xdes_(2);
+				ublas::matrix < double > tmp;
+				tmp = prod( dJ_, Ji_ );
+				vtmp3(0) = X_(1,k+1); vtmp3(1) = Y_(1,k+1); vtmp3(2) = Z_(1,k+1);
+				vtmp3 = prod( Mei_, column(FDIS_,k+1)) 
+					+ 1.*prod(tmp,dx_cmd)
+					- 1.*prod(tmp, vtmp3);
+				X_(2,k+1) += vtmp3(0); Y_(2,k+1) += vtmp3(1); Z_(2,k+1) += vtmp3(2);
+				/* -------- Adding Input change to objective -------- */
+				if( Ux_(k+1)!=0. ) vtmp2(0) = ( Ux_(k+1)-Ux_(k) ) / Ux_(k+1);
+				else vtmp2(0) = 0.;
+				if( Uy_(k+1)!=0. ) vtmp2(1) = ( Uy_(k+1)-Uy_(k) ) / Uy_(k+1);
+				else vtmp2(1) = 0.;
+				evalf += inner_prod( vtmp2, vtmp2 );
+				if( bverb ){}
 				//std::cout<<evalf<<std::endl;
+			}
 		}
+		if( evalf != evalf )
+			evalf = 1.e12;
 	}
-	if( evalf != evalf )
-		evalf = 1.e12;
+	else{
+		//std::cout<<"Computing Matrices"<<std::endl;
+		matrix< double> F = this->build_Effort();
+		vector< matrix< double > > PX = this->build_Px( F );
+		vector< matrix< double > > PU = this->build_Pu( F );
+		matrix< double > nPref = this->build_newPref( F );
+		this->nPref_ = matrix< double > ( nPref );
+		vector< double, bounded_array< double, 3 > > vtmp3( 3 );
+		for( int i=0; i<2; i++ ){
+			//std::cout<<"Dealing with "<<i<<std::endl;
+			matrix< double > Px = PX(i);
+			matrix< double > Pu = PU(i);
+			vector< double > Pref = row( nPref, i );
+			vector< double > u;
+			identity_matrix< double > idh (this->h_);
+			matrix< double > M, I;
+			//std::cout<<"Preparing Inversion"<<std::endl;
+			M = prod( Pu, trans(Pu) ) + 1./this->QeonR * idh ;
+			I.resize( M.size2(), M.size1() );
+			//std::cout<<"Inverting M = "<<M.size1()<<"x"<<M.size2()<<std::endl;
+			InvertMatrix( M, I );
+			//std::cout<<"Computing"<<i<<std::endl;
+			vtmp3(0) = this->xc_(i);	vtmp3(1) = this->dxc_(i);	vtmp3(2) = this->ddxc_(i);
+			u = prod( prod( -I, trans(Pu) ), prod( Px, vtmp3 ) - Pref );
+			if( i==0 ){
+				this->Ux_ = u;
+			}
+			else if( i==1 )
+				this->Uy_ = u;
+		}
+		//std::cout<<"Integrating CoM"<<std::endl;
+		this->integrate_CoM();
+		//std::cout<<"Computing error"<<std::endl;
+		evalf = this->compute_error(F);
+		//std::cout<<"Error = "<<evalf<<std::endl;
+	}
 	return evalf;
 }
 
@@ -405,3 +453,211 @@ int Constants_holder::fill_vector(vector<double> src, vector<double> dest ){
 	return 1;
 }
 
+matrix< double> Simplex_Pt::build_Effort(){
+	/* --------
+	Builds equivalent effort on CoM
+	-------- */
+	matrix< double > effort (3,this->h_);
+
+	identity_matrix< double > id3							( 3 );
+	identity_matrix< double > id2							( 2 );
+	vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
+	vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
+	double dtmp;
+	vector< double, bounded_array< double, 3 > > ddx_cmd, dx_cmd	( 3 );
+	vector< double, bounded_array< double, 3 > > Fk			( 3 );
+	matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > Ke, Ce;
+	/* -------- Initialization of Effector position -------- */
+	X_(0,0) = this->x_(0); X_(1,0) = this->dx_(0); X_(2,0) = this->ddx_(0);
+	Y_(0,0) = this->x_(1); Y_(1,0) = this->dx_(1); Y_(2,0) = this->ddx_(1);
+	Z_(0,0) = this->x_(2); Z_(1,0) = this->dx_(2); Z_(2,0) = this->ddx_(2);
+	dx_cmd = zero_vector< double > (3);
+	for( int k=0; k<this->h_; k++ ){
+		double Kpk, Kdk;
+		Kpk = Kp_( k ); Kdk = Kd_( k );
+		Ke = Kpk * this->JtiHJi_;
+		Ce = prod( this->JtiHJi_, Kdk*id3 - this->dJJi_ );
+		//std::cout<<Mei_<<std::endl;
+		matrix< double, row_major, bounded_array<double, BOUNDED_ARRAY_MAX_SIZE> > 
+			Me ( this->JtiHJi_ );
+		/* -------- Computing expected input acceleration -------- */
+		for( int i=0; i<3; i++ ){
+			if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
+			else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
+			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
+		}
+		ddx_cmd = -Kpk * vtmp3;
+		vtmp3(0) = X_(1,k); vtmp3(1) = Y_(1,k); vtmp3(2) = Z_(1,k);
+		ddx_cmd += -Kdk * vtmp3;
+		vtmp3(0) = X_(2,k); vtmp3(1) = Y_(2,k); vtmp3(2) = Z_(2,k);
+		ddx_cmd += -1. * vtmp3;
+		dx_cmd += dt_*ddx_cmd;
+		/* -------- Computing force acting on CoM -------- */
+		vtmp3(0) = X_(1,k);// - Xc_(1,k);
+		vtmp3(1) = Y_(1,k);// - Yc_(1,k);
+		vtmp3(2) = Z_(1,k) - 0.; // No vertical CoM velocity assumed
+		Fk = prod( Ce, vtmp3 );
+		for( int i=0; i<3; i++ ){
+			if( i==0 )		vtmp3(i) = X_(0,k) - xdes_(i);
+			else if( i==1 )	vtmp3(i) = Y_(0,k) - xdes_(i);
+			else if( i==2 )	vtmp3(i) = Z_(0,k) - xdes_(i);
+		}
+		Fk += prod( Ke, vtmp3 );
+		for(int i=0;i<3;i++) effort(i,k) = Fk(i);
+		/* -------- Computing ZMP position -------- */
+		dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
+		vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
+		for( int i=0; i<2; i++ ){
+			if( i==0 )		P_(i,k) = inner_prod( vtmp3, column( Xc_, k ) ) + dtmp * Fk(i);
+			else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
+		}
+		if( k<(this->h_-1) ){
+			/* -------- Integrating Effector position -------- */
+			X_(0,k+1) = X_(0,k) + dt_*X_(1,k) + dt_*dt_/2.*X_(2,k);
+			X_(1,k+1) = X_(1,k) + dt_*X_(2,k);
+			//
+			Y_(0,k+1) = Y_(0,k) + dt_*Y_(1,k) + dt_*dt_/2.*Y_(2,k);
+			Y_(1,k+1) = Y_(1,k) + dt_*Y_(2,k);
+			//
+			Z_(0,k+1) = Z_(0,k) + dt_*Z_(1,k) + dt_*dt_/2.*Z_(2,k);
+			Z_(1,k+1) = Z_(1,k) + dt_*Z_(2,k);
+			//
+			X_(2,k+1) = 0;	Y_(2,k+1) = 0;	Z_(2,k+1) = 0;
+			X_(2,k+1) = -Kpk*X_(0,k) + (-dt_*Kpk-Kdk)*X_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*X_(1,k) + Kpk*xdes_(0);
+			Y_(2,k+1) = -Kpk*Y_(0,k) + (-dt_*Kpk-Kdk)*Y_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Y_(1,k) + Kpk*xdes_(1);
+			Z_(2,k+1) = -Kpk*Z_(0,k) + (-dt_*Kpk-Kdk)*Z_(1,k) 
+				+ (-dt_*Kdk-dt_*dt_/2.*Kpk)*Z_(1,k) + Kpk*xdes_(2);
+			ublas::matrix < double > tmp;
+			tmp = prod( dJ_, Ji_ );
+			vtmp3(0) = X_(1,k+1); vtmp3(1) = Y_(1,k+1); vtmp3(2) = Z_(1,k+1);
+			vtmp3 = prod( Mei_, column(FDIS_,k+1)) 
+				+ 1.*prod(tmp,dx_cmd)
+				- 1.*prod(tmp, vtmp3);
+			X_(2,k+1) += vtmp3(0); Y_(2,k+1) += vtmp3(1); Z_(2,k+1) += vtmp3(2);
+		}
+	}
+	return effort;
+}
+
+vector< matrix< double > >Simplex_Pt::build_Px( matrix< double> F ){
+	/* --------
+	Builds Px spreading matrix
+	-------- */
+	vector< matrix< double > > Px (2);
+	for( int i=0; i<2; i++ ){ 
+		Px(i).resize(this->h_, 3);
+		for( int lin=0; lin<this->h_; lin++ ){
+			Px(i)(lin,0) = 1;
+			Px(i)(lin,1) = (lin+1) * this->dt_;
+			Px(i)(lin,2) = pow( (lin+1.)*this->dt_, 2. );
+			Px(i)(lin,2) += -this->M_ * this->zc_ / ( this->M_ * this->gravity_ - F(2,lin));
+		}
+	}
+
+	return Px;
+}
+
+vector< matrix< double > >Simplex_Pt::build_Pu( matrix< double> F ){
+	/* --------
+	Builds Pu spreading matrix
+	-------- */
+	vector< matrix< double > > Pu (2);
+	for( int i=0; i<2; i++ ){ 
+		Pu(i).resize(this->h_, this->h_);
+		for( int lin=0; lin<this->h_; lin++ ){
+			double diag_lin = (1. + 3.*lin + 3.*pow((double)lin,2.)) * pow( this->dt_, 3. ) / 6.;
+			diag_lin += -this->M_ * this->zc_ / ( this->M_ * this->gravity_ - F(2,lin));
+			for( int l=lin; l<this->h_; l++ ){
+				for( int c=0; c<(this->h_-lin); c++ ){
+					Pu(i)(l,c) = diag_lin;
+				}
+			}
+		}
+	}
+
+	return Pu;
+}
+
+matrix< double > Simplex_Pt::build_newPref( matrix< double> F ){
+	/* --------
+	Builds new ZMP reference position according to equivalent effort
+	-------- */
+	matrix< double > nPref (2, this->h_);
+	for( int i=0; i<2; i++ ){ 
+		for( int k=0; k<this->h_; k++ ){
+			nPref(i,k) = this->Pref_(i,k);
+			nPref(i,k) += -this->zc_ * F(i,k) / (this->M_ * this->gravity_ - F(2,k));
+		}
+	}
+
+	return nPref;
+}
+
+void Simplex_Pt::integrate_CoM(){
+	/* --------
+	Integrates Center of Mass position
+	-------- */
+	vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
+	/* -------- Initialization of CoM position -------- */
+	Xc_(0,0) = this->xc_(0); Xc_(1,0) = this->dxc_(0); Xc_(2,0) = this->ddxc_(0);
+	Yc_(0,0) = this->xc_(1); Yc_(1,0) = this->dxc_(1); Yc_(2,0) = this->ddxc_(1);
+	for( int k=0; k<this->h_; k++ ){
+		double uxk, uyk;
+		uxk = Ux_( k ); uyk = Uy_( k );
+		if( k<(this->h_-1) ){
+			/* -------- Integrating CoM position -------- */
+			vtmp3 = prod( A_, column( Xc_,k ) ) + uxk * B_;
+			for( int i=0; i<3; i++ ) Xc_( i,k+1 ) = vtmp3(i);
+			vtmp3 = prod( A_, column( Yc_,k ) ) + uyk * B_;
+			for( int i=0; i<3; i++ ) Yc_( i,k+1 ) = vtmp3(i);
+		}
+	}
+}
+
+double Simplex_Pt::compute_error( matrix< double> F ){
+	/* --------
+	Computes error if X_ and Xc_ previously computed;
+	-------- */
+	double evalf = 0.;
+	identity_matrix< double > id3							( 3 );
+	identity_matrix< double > id2							( 2 );
+	vector< double, bounded_array< double, 2 > > vtmp2		( 2 );
+	vector< double, bounded_array< double, 3 > > vtmp3		( 3 );
+	double dtmp;
+	vector< double > Fk (3);
+	for( int k=0; k<this->h_; k++ ){
+		double Kpk, Kdk;
+		Fk = column( F, k );
+		Kpk = Kp_( k ); Kdk = Kd_( k );
+		evalf += 1.e-0 * pow( (Kpk - this->Kpinit_) / this->Kpinit_, 2);
+		evalf += 1.e6 * pow( fabs(Kpk-10.) - (Kpk-10.), 2.);
+		/* -------- Adding ZMP tracking error to objective -------- */
+		evalf += 1. / pow(norm_2( column( Pref_,k ) ),2 ) 
+			* inner_prod( column( P_,k ) - column( Pref_,k ), 
+			prod( this->QeonR * id2, column( P_,k ) - column( Pref_,k ) ) );
+		/* -------- Adding Manipulation tracking error to objective -------- */
+		vtmp3(0) = X_(0,k); vtmp3(1) = Y_(0,k); vtmp3(2) = Z_(0,k);
+		evalf += 1. / pow( norm_2( xdes_ ) ,2 )
+			* inner_prod( vtmp3 - xdes_, 
+			prod( this->QtonR * id3, vtmp3 - xdes_ ) );
+		dtmp = M_ * zc_ / ( M_ * gravity_ - Fk(2) );
+			vtmp3(0) = 1.; vtmp3(1) = 0.; vtmp3(2) = dtmp;
+			for( int i=0; i<2; i++ ){
+				if( i==0 )		P_(i,k) = inner_prod( vtmp3, column( Xc_, k ) ) + dtmp * Fk(i);
+				else if( i==1 )	P_(i,k) = inner_prod( vtmp3, column( Yc_, k ) ) + dtmp * Fk(i);
+			}
+		if( k<(this->h_-1) ){
+			/* -------- Adding Input change to objective -------- */
+			if( Ux_(k+1)!=0. ) vtmp2(0) = ( Ux_(k+1)-Ux_(k) ) / Ux_(k+1);
+			else vtmp2(0) = 0.;
+			if( Uy_(k+1)!=0. ) vtmp2(1) = ( Uy_(k+1)-Uy_(k) ) / Uy_(k+1);
+			else vtmp2(1) = 0.;
+			evalf += inner_prod( vtmp2, vtmp2 );
+		}
+	}
+	if( evalf != evalf )
+		evalf = 1.e12;
+	return evalf;
+}

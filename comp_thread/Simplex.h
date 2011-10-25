@@ -13,7 +13,8 @@ public:
 	void reset( ublas::vector< double > guess, ublas::vector< double > increments, 
 						Constants_holder ch );
 	void _reset();
-	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );	
+	ublas::vector< double > minimize( double epsilon = 100., int maxiters = 2500 );
+	Simplex_Pt get_lowest(){ return this->simplex_(this->lowest_); };
 
 public:
 	Display display_;

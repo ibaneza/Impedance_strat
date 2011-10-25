@@ -200,7 +200,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
         self.pref = zmp_ref
 
 
-        if self.mode == 0 or self.mode ==2: #MAYBE WE DONT NEED THIS ONE IN MODE 2
+        if self.mode == 0 or self.mode ==2 or self.mode == 3: #MAYBE WE DONT NEED THIS ONE IN MODE 2
             Px, Pu = _get_matrices(self.h, self.dt, hong)
             ddV_com = - dot( inv(dot(Pu.T, Pu) + self.QonR*eye(self.h)), dot(Pu.T, dot(Px, com_hat) - zmp_ref) )
         elif self.mode == 1: #MAYBE WE ALSO NEED IT IN MODE 2
@@ -215,6 +215,7 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
         if self.CanGrabBox:
             if self.mode == 2:
+                print "Going in SECOND MODE!!!!"
                 reduc = 0.1
                 self.A = [[1, self.dt, self.dt**2/2],[0,1, self.dt],[0,0,1]]
                 self.B = [self.dt**3/6, self.dt**2/2, self.dt]
@@ -267,7 +268,53 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 self.task.ctrl.Kp = self.values[2*self.h]
                 self.task.ctrl.Kd = 2*sqrt(abs(self.task.ctrl.Kp))
 
-                #self.task.ctrl.Kd = values[3*self.h]
+
+            elif self.mode == 3:
+                print "Going in KP MODE!!!! ", self.task.ctrl.Kp
+                reduc = 0.1
+                self.A = [[1, self.dt, self.dt**2/2],[0,1, self.dt],[0,0,1]]
+                self.B = [self.dt**3/6, self.dt**2/2, self.dt]
+                if not self.screated:
+                    self.values = 10.*ones(self.h)
+                    self.values[0:self.h] = self.task.ctrl.Kp
+                    self.screated = True
+                boundaries = zeros(self.h)
+                maxi = 0
+                for i in range(self.h):
+                    if abs(self.values[i]) > maxi:
+                        maxi = abs(self.values[i])
+                if maxi < 2.:
+                    maxi = 20.
+                boundaries[:] = .1*abs(self.values[:])
+                for i in range(self.h):
+                    if boundaries[i] < 2.:
+                        boundaries[i] = 2.
+
+
+                self.Kpinit = self.task.ctrl.Kp
+                self.comp_thread.set_mode( 101 )
+                self.comp_thread.set_kpinit( self.Kpinit )
+
+                FDIS = self.box_ctrl.ask_force()
+                self.dJJi = dot( self.dJ,self.Ji )
+                self.comp_thread.set_constants( self.Ma, self.com_h, self.gravity, self.dt, self.h )
+                self.comp_thread.set_matrices( self.JHiJt, self.prevJ, self.dJ, self.Ji, self.dJJi, self.JtiHJi )
+                self.comp_thread.set_desired_kinematics( self.x_des, transpose(self.pref) )
+                self.comp_thread.set_current_kinematics( self.x, self.dx, self.ddx, self.xc, self.dxc, self.ddxc )
+                self.comp_thread.set_disturbance( FDIS )
+                self.comp_thread.set_simplex_parameters( self.values, boundaries )
+
+                results = self.comp_thread.update( self.dt )
+                self.values[0:-1] = results[2*self.h+1:]
+                self.values[-1] = 2*self.values[-2] - self.values[-3]
+
+                print ddV_com[0]
+                ddV_com[0][0] = results[0]
+                ddV_com[0][1] = results[self.h]
+                print ddV_com[0]
+                self.task.ctrl.Kp = results[2*self.h]
+                self.task.ctrl.Kd = 2*sqrt(abs(self.task.ctrl.Kp))
+                print self.task.ctrl.Kp
             elif self.mode == 1:
                 self.task.ctrl.Kp = self._Kp
                 self.task.ctrl.Kd = self._Kd
