@@ -5,7 +5,7 @@
 
 #define SIMPLEX_MODE_KP 101
 
-#define BOUNDED_ARRAY_MAX_SIZE 512
+#define BOUNDED_ARRAY_MAX_SIZE 8196
 
  #include <boost/numeric/ublas/vector.hpp>
  #include <boost/numeric/ublas/vector_proxy.hpp>

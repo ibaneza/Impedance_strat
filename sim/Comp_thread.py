@@ -27,7 +27,7 @@ class CompThreadCom(SocketCom):
             #print "Python>> SENDING"
             self.conn.send(msg)
             #print "Python>> RECEIVING"
-            nmsg = self.conn.recv(8192, 0)
+            nmsg = self.conn.recv(32768, 0)
             #print "Python>> PARSING"
             result = self.msg_manager(nmsg)
             #print "Python>> RETURNING"

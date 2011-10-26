@@ -4,6 +4,8 @@
 
 #include <stdlib.h>
 
+//#include <boost/thread/thread.hpp>
+
 using namespace boost::numeric::ublas;
 
 Simplex::Simplex(double Qt, double Qe, double kR, double kE, double kC):kR_(kR),kE_(kE),kC_(kC){
@@ -27,7 +29,6 @@ void Simplex::reset( ublas::vector< double > guess, ublas::vector< double > incr
 	/*--------
 	Initializes Simplex
 	--------*/
-	std::cout<<std::endl<<"SIMPLEX RESETTING"<<std::endl;
 	this->_reset();
 	this->ch_ = ch;
 	this->numvars_ = guess.size();
@@ -166,14 +167,17 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->multiple_contract_simplex();
 			}
 		}
-		modf( 100*(double)iter/(double)maxiters, &ipct );
+#ifndef NDEBUG
+		modf( 10*(double)iter/(double)maxiters, &ipct );
 		if( ipct > ipct_p ) {
-			std::cout<<"\t| "<<1*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
+			std::cout<<"\t| "<<10*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
 			this->simplex_( this->lowest_ ).func(true);
-			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).nPref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
+			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
 		}
 		ipct_p = ipct;
+#endif
 	}
+#ifndef NDEBUG
 	end = clock();
 	elapsed = ((double)end - start) / CLOCKS_PER_SEC;
 	for( int i=0; i<3; i++ ) this->stats_(i) = 100. * this->stats_(i) / iter;
@@ -190,18 +194,44 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 		std::cout<<"\t\t|In "<<elapsed<<" s >> "<<elapsed/iter<<
 			" s per iteration >> Real time expansion x"<<(int) (elapsed / this->ch_.dt_)<<std::endl;
 	}
+#else
+	std::cout<<"\tError = "<<this->errors_(this->lowest_)<<
+			", Iterations = "<<iter<<"/"<<maxiters<<", CV = "<<CV<<std::endl;
+#endif
+
 	this->simplex_( this->lowest_ ).func(true);
 	return this->simplex_(this->lowest_).get_data();
 }
 
 void Simplex::compute_error_at_vertices(){
+	//std::cout<<"\t computing error at "<<this->numvars_+1<<" vertices...";
+	/*double *e = new double(this->numvars_+1);
+	boost::thread_group grp;
+	for (int i=0; i<this->numvars_+1; ++i) {
+		subFunc s( &(this->simplex_(i)), &e[i] );
+		grp.create_thread(s);
+	}
+	std::cout<<"Joining threads...";
+	grp.join_all();
+	std::cout<<"Merging results...";
+	for (int i=0; i<this->numvars_+1; ++i) {
+		if( i==this->lowest_ )
+			continue;
+		this->errors_(i) = e[i];
+	}
+	this->guess_.set_data( this->simplex_(this->numvars_).get_data() );
+	this->currenterror_ = this->guess_.func();
+	delete[] e;*/
+
 	for( int vertex=0; vertex<this->numvars_+1; vertex++ ){
+		//std::cout<<vertex<<" ";
 		if( vertex==this->lowest_ )
 			continue;
 		this->guess_.set_data( this->simplex_(vertex).get_data() );
 		this->currenterror_ = this->guess_.func();
 		this->errors_(vertex) = this->currenterror_;
 	}
+	//std::cout<<"Done!\n";
 }
 
 void Simplex::contract_simplex(){

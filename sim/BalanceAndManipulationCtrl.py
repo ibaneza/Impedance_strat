@@ -215,17 +215,16 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
 
         if self.CanGrabBox:
             if self.mode == 2:
-                print "Going in SECOND MODE!!!!"
+                #print "Going in SECOND MODE!!!!"
                 reduc = 0.1
                 self.A = [[1, self.dt, self.dt**2/2],[0,1, self.dt],[0,0,1]]
                 self.B = [self.dt**3/6, self.dt**2/2, self.dt]
                 if not self.screated:
-                    self.values = 10.*ones(2*self.h+1) #(3*self.h)
+                    self.values = 10.*ones(3*self.h) #(3*self.h)
                     self.values[0:self.h] = -ddV_com[:,0]
                     self.values[self.h:2*self.h] = -ddV_com[:,1]
-                    self.values[2*self.h]=100. #:3*self.h] = 100.
-                    self.screated = True
-                boundaries = zeros(2*self.h+1) #3*self.h)
+                    self.values[2*self.h:]=100. #:3*self.h] = 100.
+                boundaries = zeros(3*self.h) #3*self.h)
                 for (d,f) in [(0,self.h),(self.h,2*self.h)]: #,(2*self.h,3*self.h)]:
                     maxi = 0
                     for i in range(self.h):
@@ -237,29 +236,38 @@ class BalAndManipCtrl( BalanceCtrlKpAdapt ):
                 #boundaries[:] = 0.5*abs(self.values[:])
                 ##TO FORCE!!!
                 #boundaries = ones( 2*self.h + 1)
-                boundaries[2*self.h] = 20. * 1. / reduc
+                boundaries[2*self.h:] = 20. * 1. / reduc
 
 
                 self.Kpinit = self.values[2*self.h]
-                print '\tStep 1: Optimizing Input with Kp = ', self.Kpinit
-                self.comp_thread.set_mode( 3 )
+
+                if not self.screated:
+                    print '\tInit: Optimizing Input with Kp = ', self.Kpinit
+                    self.comp_thread.set_mode( 3 )
+                    self.comp_thread.set_simplex_parameters( self.values[0:2*self.h], boundaries[0:2*self.h] )
+                else:
+                    print '\tRun: Optimizing Input and Kp'
+                    self.comp_thread.set_mode( 1 )
+                    self.comp_thread.set_simplex_parameters( self.values, reduc * boundaries )
+
                 self.comp_thread.set_kpinit( self.Kpinit )
 
                 FDIS = self.box_ctrl.ask_force()
                 self.dJJi = dot( self.dJ,self.Ji )
+                ##A# WARNING sign of GRAVITY!!!!???????
                 self.comp_thread.set_constants( self.Ma, self.com_h, self.gravity, self.dt, self.h )
                 self.comp_thread.set_matrices( self.JHiJt, self.prevJ, self.dJ, self.Ji, self.dJJi, self.JtiHJi )
                 self.comp_thread.set_desired_kinematics( self.x_des, transpose(self.pref) )
                 self.comp_thread.set_current_kinematics( self.x, self.dx, self.ddx, self.xc, self.dxc, self.ddxc )
                 self.comp_thread.set_disturbance( FDIS )
-                self.comp_thread.set_simplex_parameters( self.values[0:2*self.h], boundaries[0:2*self.h] )
 
-                self.values[0:2*self.h] = self.comp_thread.update( self.dt )
 
-                self.comp_thread.set_mode( 2 )
-                self.comp_thread.set_simplex_parameters( self.values, reduc * boundaries )
-                print "\tStep 2: Total optimization with pseudo-optimal Init."
-                self.values = self.comp_thread.update( self.dt )
+                if not self.screated:
+                    results = self.comp_thread.update( self.dt )
+                    self.values[0:results.shape[0]] = results[:]
+                    self.screated = True
+                else:
+                    self.values = self.comp_thread.update( self.dt )
 
                 #print ddV_com[0]
                 ddV_com[0][0] = self.values[0]

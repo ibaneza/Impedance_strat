@@ -33,8 +33,8 @@ std::string Comp::get_message() {
 	Writes Message
 	--------*/ 
     std::ostringstream oss (std::ostringstream::out);
-	oss << this->results_.size() + 2*this->ch_.h_<<"\n";
 	if( this->ch_.mode_ == SIMPLEX_MODE_KP ){
+		oss << this->results_.size() + 2*this->ch_.h_<<"\n";
 		Simplex_Pt min = this->simplexe_.get_lowest();
 		for( unsigned int i=0; i<this->ch_.h_; i++ )
 			oss<<min.Ux_(i)<<"\n";
@@ -45,6 +45,7 @@ std::string Comp::get_message() {
 		std::cout<<"C++ SENDING MESSAGE "<<this->results_.size() + 2*this->ch_.h_<<std::endl;
 	}
 	else{
+		oss << this->results_.size()<<"\n";
 		for( unsigned int i=0; i<this->results_.size(); i++ )
 			oss <<results_(i)<<"\n";
 		std::cout<<"C++ SENDING MESSAGE "<<this->results_.size()<<std::endl;

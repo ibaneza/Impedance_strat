@@ -49,5 +49,15 @@ private:
 	void accept_reflected_point();
 };
 
+struct subFunc{
+	double * error_;
+	Simplex_Pt * simp_Pt_;
+	subFunc( Simplex_Pt * simp_Pt, double * error ):simp_Pt_(simp_Pt),error_(error){}
+	void operator()(){
+		*error_ = simp_Pt_->func();
+	}
+};
+
+
 
 #endif //_SIMPLEX_H_

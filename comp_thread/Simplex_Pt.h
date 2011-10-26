@@ -50,6 +50,7 @@ public:
 	ublas::matrix< double> build_Effort();
 	ublas::vector< ublas::matrix< double > > build_Px(ublas::matrix< double > F);
 	ublas::vector< ublas::matrix< double > > build_Pu(ublas::matrix< double > F);
+	ublas::vector< ublas::matrix< double > > build_Pxu(ublas::matrix< double > F);
 	ublas::matrix< double > build_newPref(ublas::matrix< double > F);
 	void integrate_CoM();
 	double compute_error(ublas::matrix< double > F);
