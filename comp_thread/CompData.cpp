@@ -44,6 +44,15 @@ std::string Comp::get_message() {
 			oss <<results_(i)<<"\n";
 		std::cout<<"C++ SENDING MESSAGE "<<this->results_.size() + 2*this->ch_.h_<<std::endl;
 	}
+	else if( this->ch_.mode_ == SIMPLEX_MODE_DIS ){
+		oss <<  2*this->ch_.h_<<"\n";
+		Simplex_Pt min = this->simplexe_.get_lowest();
+		for( unsigned int i=0; i<this->ch_.h_; i++ )
+			oss<<min.Ux_(i)<<"\n";
+		for( unsigned int i=0; i<this->ch_.h_; i++ )
+			oss<<min.Uy_(i)<<"\n";
+		std::cout<<"C++ SENDING MESSAGE "<< 2*this->ch_.h_<<std::endl;
+	}
 	else{
 		oss << this->results_.size()<<"\n";
 		for( unsigned int i=0; i<this->results_.size(); i++ )
