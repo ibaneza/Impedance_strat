@@ -13,6 +13,7 @@
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 
 #include "constants.h"
+#include "Display.h"
 
 using namespace boost::numeric;
 
@@ -27,6 +28,7 @@ struct Constants_holder{
 	double  M_, zc_, g_, dt_, h_, kpinit_;
 	int mode_;
 	ublas::vector< double > x_, dx_, ddx_;		// Manipulation task	current position, velocity, acceleration
+	ublas::vector< double > dx_cmd_;			// Manipulation task	
 	ublas::vector< double > xc_, dxc_, ddxc_;	// Center of Mass		current position, velocity, acceleration
 	ublas::vector< double > xdes_;				// Manipulation task	desired position
 	ublas::matrix< double > Mei_;				// Configuation space	Mass Matrix
@@ -47,15 +49,16 @@ public:
 	Simplex_Pt( int mode=SIMPLEX_MODE_U_KPCONST );
 	~Simplex_Pt();
 
-	ublas::matrix< double> build_Effort();
+	ublas::matrix< double> build_Effort( bool is_accounting_for_disturbance );
 	ublas::vector< ublas::matrix< double > > build_Px(ublas::matrix< double > F);
 	ublas::vector< ublas::matrix< double > > build_Pu(ublas::matrix< double > F);
 	ublas::vector< ublas::matrix< double > > build_Pxu(ublas::matrix< double > F);
 	ublas::matrix< double > build_newPref(ublas::matrix< double > F);
 	void integrate_CoM();
-	double compute_error(ublas::matrix< double > F);
+	double compute_error(ublas::matrix< double > F, bool is_accountig_for_disturbance);
 
 public:
+	Display display_;
 	/* -------- Point-related stuff ---------- */
 	ublas::vector< double > data_;	// Contains point position in parameters space
 	double distance_;				// Objective function evaluation of current point position
@@ -65,10 +68,11 @@ public:
 
 	/* -------- User-given stuff ---------- */
 	ublas::vector< double > x_, dx_, ddx_;		// Manipulation task	current position, velocity, acceleration
+	ublas::vector< double > dx_cmd_;			// Manipulation task	
 	ublas::vector< double > xc_, dxc_, ddxc_;	// Center of Mass		current position, velocity, acceleration
 	ublas::vector< double > xdes_;				// Manipulation task	desired position
 	ublas::matrix< double > Pref_, nPref_;		// ZMP					reference position
-	ublas::matrix< double > FDIS_;				// Total Disturbance	force Horizon
+	ublas::matrix< double > FDIS_, F_;			// Total Disturbance	force Horizon
 	ublas::matrix< double > Mei_;				// Configuation space	Mass Matrix
 	ublas::matrix< double > J_, dJ_, Ji_;		// Some Jacobian		derivates
 	ublas::matrix< double > dJJi_, JtiHJi_;		// Some Jacobian		composites
@@ -99,7 +103,7 @@ public:
 				{ this->QtonR=Qt; this->QeonR=Qe;};
 	int set_data( const ublas::vector<double> &data );
 	int set_current_kinematics( const ublas::vector<double> &x, const ublas::vector<double> &dx, const ublas::vector<double> &ddx,
-		const ublas::vector<double> &xc, const ublas::vector<double> &dxc, const ublas::vector<double> &ddxc); 
+		const ublas::vector<double> &xc, const ublas::vector<double> &dxc, const ublas::vector<double> &ddxc, const ublas::vector<double> &dx_cmd); 
 	int set_desired_kinematics( const ublas::vector<double> &xdes, const ublas::matrix<double> &Pref ); 
 	int set_constants( double M, double zc, double gravity, double dt, double h );
 	int set_kpinit( double Kpinit );

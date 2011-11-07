@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 
-//#include <boost/thread/thread.hpp>
+#include <boost/thread/thread.hpp>
 
 using namespace boost::numeric::ublas;
 
@@ -83,7 +83,7 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 	clock_t start, end;
 	double elapsed;
 	start = clock();
-	double ipct = 0., ipct_p = 0.;
+	double ipct = 0., ipct_p = -1.;
 	double CV;
 	int iter;
 	for( iter=0; iter<maxiters; iter++ ){
@@ -167,15 +167,16 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 					this->multiple_contract_simplex();
 			}
 		}
-#ifndef NDEBUG
-		modf( 10*(double)iter/(double)maxiters, &ipct );
+
+		modf( 100*(double)iter/(double)maxiters, &ipct );
 		if( ipct > ipct_p ) {
+#ifndef NDEBUG
 			std::cout<<"\t| "<<10*ipct<<"%("<<CV/epsilon<<")";//<<"% ("<<iter<<" it.) >> error = "<<this->errors_(this->lowest_)<<" >> CV = "<<CV<<std::endl;
+#endif
 			this->simplex_( this->lowest_ ).func(true);
-			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
+			this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_, this->simplex_(this->lowest_).F_ );
 		}
 		ipct_p = ipct;
-#endif
 	}
 #ifndef NDEBUG
 	end = clock();
@@ -200,28 +201,31 @@ ublas::vector< double > Simplex::minimize( double epsilon, int maxiters ){
 #endif
 
 	this->simplex_( this->lowest_ ).func(true);
+	//std::cout<<"Kpinit was "<<this->simplex_( this->lowest_ ).Kpinit_<<std::endl;
+	//this->display_.showPreview( true, this->simplex_(this->lowest_).Xc_, this->simplex_(this->lowest_).Yc_, this->simplex_(this->lowest_).zc_, this->simplex_(this->lowest_).X_, this->simplex_(this->lowest_).Y_, this->simplex_(this->lowest_).Z_, this->simplex_(this->lowest_).P_, this->simplex_(this->lowest_).Pref_, this->simplex_(this->lowest_).nPref_, this->simplex_(this->lowest_).xdes_, this->simplex_(this->lowest_).FDIS_ );
 	return this->simplex_(this->lowest_).get_data();
 }
 
 void Simplex::compute_error_at_vertices(){
 	//std::cout<<"\t computing error at "<<this->numvars_+1<<" vertices...";
-	/*double *e = new double(this->numvars_+1);
-	boost::thread_group grp;
-	for (int i=0; i<this->numvars_+1; ++i) {
-		subFunc s( &(this->simplex_(i)), &e[i] );
-		grp.create_thread(s);
-	}
-	std::cout<<"Joining threads...";
-	grp.join_all();
-	std::cout<<"Merging results...";
-	for (int i=0; i<this->numvars_+1; ++i) {
-		if( i==this->lowest_ )
-			continue;
-		this->errors_(i) = e[i];
-	}
-	this->guess_.set_data( this->simplex_(this->numvars_).get_data() );
-	this->currenterror_ = this->guess_.func();
-	delete[] e;*/
+	//double *e = new double(this->numvars_+1);
+	//boost::thread_group grp;
+	//ublas::vector< subFunc > sv( this->numvars_+1 );
+	//for (int i=0; i<this->numvars_+1; ++i) {
+	//	sv(i) = subFunc( &(this->simplex_(i)), &(e[i]),i );
+	//	grp.create_thread(sv(i));
+	//}
+	//std::cout<<"Joining "<<this->numvars_+1<<" threads...";
+	//grp.join_all();
+	//std::cout<<"Merging results...";
+	//for (int i=0; i<this->numvars_+1; ++i) {
+	//	if( i==this->lowest_ )
+	//		continue;
+	//	this->errors_(i) = e[i];
+	//}
+	//this->guess_.set_data( this->simplex_(this->numvars_).get_data() );
+	//this->currenterror_ = this->guess_.func();
+	//delete[] e;
 
 	for( int vertex=0; vertex<this->numvars_+1; vertex++ ){
 		//std::cout<<vertex<<" ";

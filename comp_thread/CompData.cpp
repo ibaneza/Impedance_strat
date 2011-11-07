@@ -91,14 +91,20 @@ int Comp::analyse_message(std::string msg) {
 		else if (s=="x"){				fill_vector( ch_.x_			, in );count++;}
 		else if (s=="dx"){				fill_vector( ch_.dx_		, in );count++;}
 		else if (s=="ddx"){				fill_vector( ch_.ddx_		, in );count++;}
-		else if (s=="xc"){				fill_vector( ch_.xc_			, in );count++;}
+		else if (s=="xc"){				fill_vector( ch_.xc_		, in );count++;}
 		else if (s=="dxc"){				fill_vector( ch_.dxc_		, in );count++;}
-		else if (s=="ddxc"){				fill_vector( ch_.ddxc_		, in );count++;}
+		else if (s=="ddxc"){			fill_vector( ch_.ddxc_		, in );count++;}
+		else if (s=="dxcmd"){			fill_vector( ch_.dx_cmd_	, in );count++;}
 		else if (s=="xdes"){			fill_vector( ch_.xdes_		, in );count++;}
 		/* -------- Parameters -------- */
 		else if (s=="guess"){			fill_vector( this->guess_		, in );count++;}
 		else if (s=="increments"){		fill_vector( this->increments_	, in );count++;}
     }
+	std::cout<<"dx = "<<ch_.dx_<<"\n"<<"dx_cmd = "<<ch_.dx_cmd_<<std::endl;
+	/*std::cout<<"dJ = "<<ch_.dJ_<<std::endl;
+	std::cout<<"dJ.Ji = "<<ch_.dJJi_<<std::endl;
+	std::cout<<"Me = "<<ch_.JtiHJi_<<std::endl;
+	std::cout<<"Me.dJ.Ji = "<<prod(ch_.JtiHJi_,ch_.dJJi_)<<std::endl;*/
 	return this->ch_.assume_state();
 }
 

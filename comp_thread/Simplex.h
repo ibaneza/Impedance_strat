@@ -2,7 +2,7 @@
 #define _SIMPLEX_H_
 
 #include "Simplex_Pt.h"
-#include "Display.h"
+
 
 using namespace boost::numeric;
 
@@ -52,10 +52,15 @@ private:
 struct subFunc{
 	double * error_;
 	Simplex_Pt * simp_Pt_;
-	subFunc( Simplex_Pt * simp_Pt, double * error ):simp_Pt_(simp_Pt),error_(error){}
+	int id_;
+	subFunc(){};
+	subFunc( Simplex_Pt * simp_Pt, double * error, int id ):simp_Pt_(simp_Pt),error_(error), id_(id){}
 	void operator()(){
 		*error_ = simp_Pt_->func();
-	}
+		std::cout<<*error_<<"  "<<id_<<std::endl;
+		//std::cout<<"Yay!!!"<<std::endl;
+	};
+	~subFunc(){};
 };
 
 
